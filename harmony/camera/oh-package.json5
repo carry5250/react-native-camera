@@ -1,0 +1,12 @@
+{
+  license: 'MIT',
+  types: '',
+  name: '@react-native-oh-tpl/react-native-camera',
+  description: '',
+  main: 'Index.ets',
+  type: 'module',
+  version: '4.2.1-0.1',
+  dependencies: {
+    "@rnoh/react-native-openharmony": '0.72.38' // 执行指定依赖的 RN SDK 版本
+  },
+}

@@ -41,7 +41,7 @@ type CustomWhiteBalance = {
   greenGainOffset?: number;
   blueGainOffset?: number;
 };
-type BarCodeType = Readonly<{
+export type BarCodeType = Readonly<{
   aztec: any;
   code128: any;
   code39: any;
@@ -56,7 +56,7 @@ type BarCodeType = Readonly<{
   itf14: any;
   datamatrix: any;
 }>;
-type VideoQuality = Readonly<{
+export type VideoQuality = Readonly<{
   '2160p': any;
   '1080p': any;
   '720p': any;
@@ -65,14 +65,14 @@ type VideoQuality = Readonly<{
   /** iOS Only. Android not supported. */
   '288p': any;
 }>;
-type VideoCodec = Readonly<{
+export type VideoCodec = Readonly<{
   H264: symbol;
   JPEG: symbol;
   HVEC: symbol;
   AppleProRes422: symbol;
   AppleProRes4444: symbol;
 }>;
-type ImageType = Readonly<{
+export type ImageType = Readonly<{
   'jpeg': any;
   'png': any;
 }>;
