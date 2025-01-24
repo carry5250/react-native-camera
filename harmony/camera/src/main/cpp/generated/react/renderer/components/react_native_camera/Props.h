@@ -137,6 +137,7 @@ class RTNCameraViewProps final : public ViewProps {
   RTNCameraViewRectOfInterestStruct rectOfInterest{};
   std::string cameraId{};
   bool detectedImageInEvent{false};
+  bool video{false};
 };
 
 } // namespace react

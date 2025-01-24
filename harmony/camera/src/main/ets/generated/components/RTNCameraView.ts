@@ -48,6 +48,7 @@ export namespace RTNCameraView {
     rectOfInterest?: {x: number, y: number, width: number, height: number};
     cameraId?: string;
     detectedImageInEvent?: boolean;
+    video?: boolean;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -167,6 +168,10 @@ export namespace RTNCameraView {
     
     get detectedImageInEvent() {
       return this.rawProps.detectedImageInEvent ?? false;
+    }
+    
+    get video() {
+      return this.rawProps.video ?? false;
     }
     
   

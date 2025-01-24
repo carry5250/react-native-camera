@@ -55,7 +55,9 @@ export type RecordOptions = { quality?: string, orientation?: Object, maxDuratio
 
 export type HardwareCamera = { deviceType?: string, id: string, type: number }
 
-export type TakePictureOptions = { quality?: number, base64?: boolean, exif?: boolean, width?: number, mirrorImage?: boolean, doNotSave?: boolean, pauseAfterCapture?: boolean, fixOrientation?: boolean, forceUpOrientation?: boolean, imageType?: string, path?: string }
+export type TakePictureOptions = {
+  rotation?: string | number; quality?: number, base64?: boolean, exif?: boolean, width?: number, mirrorImage?: boolean, doNotSave?: boolean, pauseAfterCapture?: boolean, fixOrientation?: boolean, forceUpOrientation?: boolean, imageType?: string, path?: string
+}
 
 export type TakePictureResponse = { width: number, height: number, uri: string, base64?: string, pictureOrientation: number, deviceOrientation: number }
 

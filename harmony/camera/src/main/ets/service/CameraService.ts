@@ -7,7 +7,7 @@
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { camera } from '@kit.CameraKit';
 import { media } from '@kit.MediaKit';
-import { fileIo as fs } from '@kit.CoreFileKit';
+import { fileIo, fileIo as fs } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { JSON } from '@kit.ArkTS';
 import Logger from '../utils/Logger';
@@ -24,7 +24,15 @@ import {
 import { isEmptyValue } from '../utils/utils';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
 import { RecordOptions, TakePictureOptions } from '../types';
-import { getFlashMode, getFocusMode, getPhotoProfileList, getResolutionSize, getVideoCodec } from './utils';
+import {
+  getFlashMode,
+  getFocusMode,
+  getOrientation,
+  getPhotoProfileList,
+  getPhotoQuality,
+  getResolutionSize,
+  getVideoCodec
+} from './utils';
 
 
 const TAG: string = 'CameraService';
@@ -33,6 +41,14 @@ export class SliderValue {
   min: number = 1;
   max: number = 6;
   step: number = 0.1;
+}
+
+interface SessionOptionType {
+  cameraManager: camera.CameraManager,
+  cameraInput: camera.CameraInput,
+  previewOutput: camera.PreviewOutput,
+  photoOutput: camera.PhotoOutput | undefined,
+  videoOutput: camera.VideoOutput | undefined
 }
 
 declare function getContext(component?: Object): Context;
@@ -49,7 +65,7 @@ class CameraService {
   private videoOutput: camera.VideoOutput | undefined = undefined;
   private avRecorder: media.AVRecorder | undefined = undefined;
   private session: camera.PhotoSession | camera.VideoSession | undefined = undefined;
-  private curSceneMode: camera.SceneMode = camera.SceneMode.NORMAL_PHOTO;
+  private curSceneMode: camera.SceneMode = camera.SceneMode.NORMAL_VIDEO;
   private curCameraDevice: camera.CameraDevice | undefined = undefined;
   private photoAsset = {} as TakePictureResponse;
   private maxZoom: number | undefined = undefined;
@@ -149,9 +165,11 @@ class CameraService {
     return camerasArray;
   }
 
-  public async initCamera(initConfig: { surfaceId: string, cameraDeviceIndex: number, cameraProps?: CameraProps, initSuccessCallBack?: () => void }
+  public async initCamera(initConfig: {
+    surfaceId: string, cameraDeviceIndex: number, cameraProps?: CameraProps, initSuccessCallBack?: () => void
+  }
   ): Promise<void> {
-    const { surfaceId, cameraDeviceIndex, cameraProps, initSuccessCallBack } = initConfig;
+    const { surfaceId, cameraDeviceIndex, initSuccessCallBack } = initConfig;
     Logger.debug(TAG, `initCamera cameraDeviceIndex: ${cameraDeviceIndex}`);
     this.surfaceId = surfaceId;
     this.cameraDeviceIndex = cameraDeviceIndex;
@@ -216,8 +234,14 @@ class CameraService {
           return;
         }
         await this.prepareAVRecorder();
+        let videoSurfaceId = await this.avRecorder.getInputSurface();
+        // Create videoOutput output object.
+        this.videoOutput = this.createVideoOutputFn(this.cameraManager, this.videoProfileObj, videoSurfaceId);
+        if (this.videoOutput === undefined) {
+          Logger.error(TAG, 'Failed to create the video stream.');
+          return;
+        }
       }
-
 
       // 创建cameraInput输出对象
       this.cameraInput = this.createCameraInputFn(this.cameraManager, this.curCameraDevice);
@@ -236,14 +260,36 @@ class CameraService {
       // 监听CameraInput
       this.onCameraInputChange(this.cameraInput, this.curCameraDevice);
       // 会话流程
-      await this.sessionFlowFn(this.cameraManager, this.cameraInput, this.previewOutput, this.photoOutput);
-
+      await this.sessionFlowFn({
+        cameraManager: this.cameraManager,
+        cameraInput: this.cameraInput,
+        previewOutput: this.previewOutput,
+        photoOutput: this.photoOutput,
+        videoOutput: this.videoOutput
+      }
+      );
       initSuccessCallBack?.();
     } catch (error) {
       let err = error as BusinessError;
       Logger.error(TAG, `initCamera fail: ${JSON.stringify(err)}`);
       this.onError(`initCamera fail: ${JSON.stringify(err)}`)
     }
+  }
+
+  /**
+   * Create videoOutPut output object.
+   */
+  createVideoOutputFn(cameraManager: camera.CameraManager, videoProfileObj: camera.VideoProfile,
+    surfaceId: string): camera.VideoOutput | undefined {
+    let videoOutput: camera.VideoOutput | undefined = undefined;
+    try {
+      videoOutput = cameraManager.createVideoOutput(videoProfileObj, surfaceId);
+      Logger.info(TAG, `createVideoOutputFn success: ${videoOutput}`);
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG, `createVideoOutputFn failed: ${JSON.stringify(err)}`);
+    }
+    return videoOutput;
   }
 
   private async createAVRecorder(): Promise<media.AVRecorder | undefined> {
@@ -272,7 +318,10 @@ class CameraService {
       options.pauseAfterCapture = false;
     }
     this.photoAsset.uri = '';
-    await this.photoOutput?.capture(this.photoCaptureSetting);
+    await this.photoOutput?.capture({
+      ...this.photoCaptureSetting, quality: getPhotoQuality(options.quality),
+      rotation: getOrientation(options.rotation)
+    });
     this.photoAsset.width = this.photoProfileObj.size.width;
     this.photoAsset.height = this.photoProfileObj.size.height;
     return new Promise((resolve) => {
@@ -287,10 +336,6 @@ class CameraService {
   }
 
 
-  public async recordAsync(options?: RecordOptions): Promise<RecordResponse> {
-    return;
-  }
-
   public async refreshAuthorizationStatus(): Promise<void> {
     return;
   }
@@ -300,22 +345,10 @@ class CameraService {
   }
 
   public async getSupportedRatiosAsync(): Promise<string[]> {
-    // return new Promise((resolve) => {
-    //   const timer = setTimeout(() => {
-    //     if (this.photoAsset.uri) {
-    //       clearTimeout(timer);
-    //       if (this.ctx) {
-    //         this.ctx.rnInstance.emitDeviceEvent('getSupportedRatiosAsync', this.ratioList);
-    //       }
-    //       resolve(this.ratioList);
-    //     }
-    //   }, 200)
-    // });
     if (this.ctx) {
       this.ctx.rnInstance.emitDeviceEvent('getSupportedRatiosAsync', this.ratioList);
     }
     return this.ratioList
-
   }
 
   public async getSupportedPreviewFpsRange(): Promise<string[]> {
@@ -333,53 +366,88 @@ class CameraService {
   /*
    * 准备录制
    * */
-  private async prepareAVRecorder(options?: RecordOptions): Promise<void> {
-    const { quality, orientation, mute:_mute, fps, codec, path, videoBitrate } = options;
-    let mute = _mute || false;
+  // private async prepareAVRecorder(options?: RecordOptions): Promise<void> {
+  //   const { quality, orientation, mute:_mute, fps, codec, path, videoBitrate } = options;
+  //   let mute = _mute || false;
+  //   this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
+  //   this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+  //
+  //   const { captureAudio } = this.props;
+  //   if (
+  //     !captureAudio ||
+  //       this.allPermissionStatus.recordAudioPermissionStatus !== RecordAudioPermissionStatusEnum.AUTHORIZED
+  //   ) {
+  //     mute = true;
+  //   }
+  //
+  //   let audioConfig = !mute ? {
+  //     audioBitrate: Constants.AUDIO_BITRATE,
+  //     audioChannels: Constants.AUDIO_CHANNELS,
+  //     audioCodec: media.CodecMimeType.AUDIO_AAC,
+  //     audioSampleRate: Constants.AUDIO_SAMPLE_RATE,
+  //   } : {}
+  //
+  //   const resolutionSize = getResolutionSize(quality);
+  //   let videoConfig: media.AVRecorderConfig = {
+  //     audioSourceType: media.AudioSourceType.AUDIO_SOURCE_TYPE_MIC,
+  //     videoSourceType: media.VideoSourceType.VIDEO_SOURCE_TYPE_SURFACE_YUV,
+  //     profile: {
+  //       ...audioConfig,
+  //       fileFormat: media.ContainerFormatType.CFT_MPEG_4,
+  //       videoBitrate: videoBitrate ?? Constants.VIDEO_BITRATE,
+  //       videoCodec: getVideoCodec(codec),
+  //       videoFrameWidth: resolutionSize?.width ?? this.videoProfileObj.size.width,
+  //       videoFrameHeight: resolutionSize?.height ?? this.videoProfileObj.size.height,
+  //       videoFrameRate: fps ?? 30,
+  //     },
+  //     url: `fd://${this.videoFile.fd.toString()}`,
+  //     rotation: this.curCameraDevice?.cameraOrientation,
+  //   };
+  //   Logger.info(TAG, `prepareAVRecorder videoConfig: ${JSON.stringify(videoConfig)}`);
+  //   await this.avRecorder?.prepare(videoConfig).catch((err: BusinessError): void => {
+  //     Logger.error(TAG, `prepareAVRecorder prepare err: ${JSON.stringify(err)}`);
+  //   });
+  // }
+
+
+  async prepareAVRecorder(): Promise<void> {
+    let audioConfig = {
+      audioChannels: 2,
+      audioCodec: media.CodecMimeType.AUDIO_AAC,
+      audioBitrate: 48000,
+      audioSampleRate: 48000,
+    }
+    let videoConfig: media.AVRecorderProfile = {
+      fileFormat: media.ContainerFormatType.CFT_MPEG_4,
+      videoBitrate: 512000,
+      videoCodec: media.CodecMimeType.VIDEO_AVC,
+      videoFrameWidth: 640, // 视频分辨率的宽
+      videoFrameHeight: 480, // 视频分辨率的高
+      videoFrameRate: 30 // 视频帧率
+    };
+    let videoConfigProfile: media.AVRecorderProfile = {
+      ...audioConfig, ...videoConfig
+    }
     this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
     this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-
-    const { captureAudio } = this.props;
-    if (
-      !captureAudio ||
-        this.allPermissionStatus.recordAudioPermissionStatus !== RecordAudioPermissionStatusEnum.AUTHORIZED
-    ) {
-      mute = true;
+    let aVVideo = {
+      videoSourceType: media.VideoSourceType.VIDEO_SOURCE_TYPE_SURFACE_YUV,
+      profile: videoConfigProfile,
+      url: `fd://${this.videoFile.fd.toString()}`, // 文件需先由调用者创建，赋予读写权限，将文件fd传给此参数，eg.fd://45--file:///data/media/01.mp4
+      rotation: 90, // 合理值0、90、180、270，非合理值prepare接口将报错
+      location: {
+        latitude: 30, longitude: 130
+      }
+    }
+    try {
+      await this.avRecorder.prepare(aVVideo);
+    } catch (error) {
+      Logger.error(TAG, `avRecorder.prepare.error ${JSON.stringify(error)}`);
     }
 
-    let audioConfig = !mute ? {
-      audioBitrate: Constants.AUDIO_BITRATE,
-      audioChannels: Constants.AUDIO_CHANNELS,
-      audioCodec: media.CodecMimeType.AUDIO_AAC,
-      audioSampleRate: Constants.AUDIO_SAMPLE_RATE,
-    } : {}
-
-    const resolutionSize = getResolutionSize(quality);
-    let videoConfig: media.AVRecorderConfig = {
-      audioSourceType: media.AudioSourceType.AUDIO_SOURCE_TYPE_MIC,
-      videoSourceType: media.VideoSourceType.VIDEO_SOURCE_TYPE_SURFACE_YUV,
-      profile: {
-        ...audioConfig,
-        fileFormat: media.ContainerFormatType.CFT_MPEG_4,
-        videoBitrate: videoBitrate ?? Constants.VIDEO_BITRATE,
-        videoCodec: getVideoCodec(codec),
-        videoFrameWidth: resolutionSize?.width ?? this.videoProfileObj.size.width,
-        videoFrameHeight: resolutionSize?.height ?? this.videoProfileObj.size.height,
-        videoFrameRate: fps ?? 30,
-      },
-      url: `fd://${this.videoFile.fd.toString()}`,
-      rotation: this.curCameraDevice?.cameraOrientation,
-    };
-    Logger.info(TAG, `prepareAVRecorder videoConfig: ${JSON.stringify(videoConfig)}`);
-    await this.avRecorder?.prepare(videoConfig).catch((err: BusinessError): void => {
-      Logger.error(TAG, `prepareAVRecorder prepare err: ${JSON.stringify(err)}`);
-    });
   }
 
-  /*
-   * 启动录制
-   * */
-  public async startVideo(): Promise<void> {
+  public async recordAsync(options?: RecordOptions): Promise<RecordResponse> {
     Logger.info(TAG, 'startVideo is called');
     try {
       await this.videoOutput?.start();
@@ -389,7 +457,9 @@ class CameraService {
       let err = error as BusinessError;
       this.onError(`startVideo err: ${JSON.stringify(err)}`)
     }
+    return;
   }
+
 
   /*
    * 停止录制
@@ -796,9 +866,9 @@ class CameraService {
   /**
    * 会话流程
    */
-  async sessionFlowFn(cameraManager: camera.CameraManager, cameraInput: camera.CameraInput,
-    previewOutput: camera.PreviewOutput, photoOutput: camera.PhotoOutput | undefined,
+  async sessionFlowFn(options: SessionOptionType
   ): Promise<void> {
+    const { cameraManager, cameraInput, previewOutput, photoOutput, videoOutput } = options
     try {
       // 创建CaptureSession实例
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
@@ -814,22 +884,41 @@ class CameraService {
       this.session.beginConfig();
       this.session.addInput(cameraInput);
       this.session.addOutput(previewOutput);
-      if (photoOutput === undefined) {
-        return;
+      if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
+        if (photoOutput === undefined) {
+          return;
+        }
+        this.photoOutputCallBack(photoOutput);
+        this.session.addOutput(photoOutput);
+      } else if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
+        if (videoOutput === undefined) {
+          return;
+        }
+        this.session.addOutput(videoOutput);
       }
-      // 拍照监听事件
-      this.photoOutputCallBack(photoOutput);
-      this.session.addOutput(photoOutput);
-      // 提交配置信息
       await this.session.commitConfig();
+      if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
+        this.setVideoStabilizationFn(this.session as camera.VideoSession, camera.VideoStabilizationMode.MIDDLE);
+      }
       this.setFocusModeFn(camera.FocusMode.FOCUS_MODE_AUTO);
       await this.session.start();
-      Logger.info(TAG, 'sessionFlowFn success-创建会话成功');
     } catch (error) {
       let err = error as BusinessError;
-      Logger.error(TAG, `sessionFlowFn fail创建会话失败 : ${JSON.stringify(err)}`);
+      this.onError(`create session fail  : ${JSON.stringify(err)}`)
     }
   }
+
+
+  /*
+   * 设置视频防抖模式
+   * */
+  setVideoStabilizationFn(session: camera.VideoSession, videoStabilizationMode: camera.VideoStabilizationMode): void {
+    let isVideoStabilizationModeSupported: boolean = session.isVideoStabilizationModeSupported(videoStabilizationMode);
+    if (isVideoStabilizationModeSupported) {
+      session.setVideoStabilizationMode(videoStabilizationMode);
+    }
+  }
+
 
   // 通过弹窗获取需要保存到媒体库的位于应用沙箱的图片/视频uri
   async getMediaLibraryUri(srcFileUri: string, title: string, fileNameExtension: string,

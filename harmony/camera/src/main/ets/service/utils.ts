@@ -73,6 +73,7 @@ interface PhotoProfileType1 {
   ratio: string,
   size: { width: number, height: number }
 }
+
 interface PhotoProfileType2 {
   format?: number,
   ratio: string,
@@ -92,4 +93,14 @@ export const getPhotoProfileList = (list: Array<any>): Array<PhotoProfileType2> 
     const ratio = `${simplifiedWidth}:${simplifiedHeight}`;
     return { ...item, ratio }
   })
+}
+
+export const getPhotoQuality = (quality: number): number => {
+  if (quality <= 0) {
+    return 0;
+  } else if (quality > 0 && quality <= 1) {
+    return 1
+  } else {
+    return 2
+  }
 }

@@ -16,7 +16,7 @@ import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from './com
 import CameraService from './service/CameraService'
 import ScanService from './service/ScanService';
 import { FocusAreaComponent, } from './component';
-import { CameraProps, AllPermissionStatus, TakePictureOptions } from './types'
+import { CameraProps, AllPermissionStatus, TakePictureOptions, RecordOptions } from './types'
 import { FocusComponent } from './component/FocusComponent';
 import CameraManager from './service/CameraManager';
 import { isEmptyValue } from './utils/utils';
@@ -208,14 +208,50 @@ export struct RTNCameraView {
           if (command === 'getSupportedRatiosAsync') {
             CameraService.getSupportedRatiosAsync()
           }
-
+          if (command === 'recordAsync') {
+            let options = args[0] as RecordOptions
+            CameraService.recordAsync(options)
+          }
+          if (command === 'stopRecording') {
+            CameraService.stopRecording()
+          }
+          if (command === 'pausePreview') {
+            CameraService.pausePreview()
+          }
+          if (command === 'resumePreview') {
+            CameraService.resumePreview()
+          }
+          if (command === 'getSupportedRatiosAsync') {
+            CameraService.getSupportedRatiosAsync()
+          }
+          if (command === 'checkIfVideoIsValid') {
+            CameraService.checkIfVideoIsValid()
+          }
           if (command === Constants.REQUEST_DEVICE_CAMERA_AUTHOR) {
+            this.requestDeviceCameraAuthorization()
 
           }
           if (command === Constants.CHECK_DEVICE_CAMERA_AUTHOR) {
+            this.checkDeviceCameraAuthorizationStatus();
           }
         });
     }
+  }
+
+  /*
+ * 请求相机授权
+ * */
+  async requestDeviceCameraAuthorization() {
+    const result = await CameraManager.requestDeviceCameraAuthorization()
+    this.ctx.rnInstance.emitDeviceEvent('requestDeviceCameraAuthorization', result);
+  }
+
+  /*
+ * 检查相机授权
+ * */
+  async checkDeviceCameraAuthorizationStatus() {
+    const result = CameraManager.checkDeviceCameraAuthorizationStatus()
+    this.ctx.rnInstance.emitDeviceEvent('checkDeviceCameraAuthorizationStatus', result);
   }
 
   async takePhoto(options: TakePictureOptions) {

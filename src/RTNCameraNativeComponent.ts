@@ -1,55 +1,15 @@
 import type * as React from 'react';
-import { type ColorValue, type HostComponent, type ViewProps } from 'react-native';
+import { type HostComponent, type ViewProps } from 'react-native';
 import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
-import type {
-  BubblingEventHandler,
-  DirectEventHandler,
-  Int32,
-  WithDefault,
-} from 'react-native/Libraries/Types/CodegenTypes';
+import type { Int32, WithDefault } from 'react-native/Libraries/Types/CodegenTypes';
 import codegenNativeCommands from 'react-native/Libraries/Utilities/codegenNativeCommands';
-import {
-  HardwareCamera,
-  ImageType,
-  Orientation,
-  OrientationNumber,
-  RecordOptions,
-  RecordResponse,
-  TakePictureResponse,
-} from '../types';
-import { UnsafeMixed } from './codegen';
+import { HardwareCamera, RecordResponse, TakePictureResponse } from '../types';
 
 export type Status = 'READY' | 'PENDING_AUTHORIZATION' | 'NOT_AUTHORIZED';
 
 export function hasTorch() {}
 
-type BarcodeType =
-  | 'EMAIL'
-  | 'PHONE'
-  | 'CALENDAR_EVENT'
-  | 'DRIVER_LICENSE'
-  | 'GEO'
-  | 'SMS'
-  | 'CONTACT_INFO'
-  | 'WIFI'
-  | 'TEXT'
-  | 'ISBN'
-  | 'PRODUCT'
-  | 'URL';
-
-type Email = {
-  address?: string;
-  body?: string;
-  subject?: string;
-  emailType?: 'UNKNOWN' | 'Work' | 'Home';
-};
-
 type Point = { x: Int32; y: Int32 };
-
-type Phone = {
-  Int32?: string;
-  phoneType?: 'UNKNOWN' | 'Work' | 'Home' | 'Fax' | 'Mobile';
-};
 
 export type FaceFeature = {
   bounds: {
@@ -92,14 +52,12 @@ type TrackedTextFeature = {
   components: Array<TrackedTextFeature>;
 };
 
-
 type Rect = {
   x: Int32;
   y: Int32;
   width: Int32;
   height: Int32;
 };
-
 
 type FlashModeType = WithDefault<'auto' | 'on' | 'off', 'auto'>;
 
@@ -133,6 +91,7 @@ interface PropsType {
   ///
   cameraId?: string;
   detectedImageInEvent?: boolean;
+  video?: boolean;
 }
 
 export type RecordAudioPermissionStatus = WithDefault<
