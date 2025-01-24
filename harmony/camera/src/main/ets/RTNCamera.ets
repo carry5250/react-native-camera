@@ -205,6 +205,10 @@ export struct RTNCameraView {
             let options = args[0] as TakePictureOptions
             this.takePhoto(options)
           }
+          if (command === 'getSupportedRatiosAsync') {
+            CameraService.getSupportedRatiosAsync()
+          }
+
           if (command === Constants.REQUEST_DEVICE_CAMERA_AUTHOR) {
 
           }
@@ -289,6 +293,7 @@ export struct RTNCameraView {
   }
 
   updateProps(props: CameraProps) {
+    Logger.info(TAG, `CameraProps:${JSON.stringify(props)}`)
     const type = props.type ?? 'back'
     const exposure = props.exposure;
     const autoFocusPointOfInterest = props.autoFocusPointOfInterest

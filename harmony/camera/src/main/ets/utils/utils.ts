@@ -120,3 +120,29 @@ export const getViewSize = (screenWidth: number, screenHeight: number, ratio: nu
 export function isFunction(value: any): boolean {
   return Object.prototype.toString.call(value) === '[object Function]';
 }
+
+
+interface PhotoProfileType1 {
+  ratio: string,
+  size: { width: number, height: number }
+}
+interface PhotoProfileType2 {
+  format?: number,
+  ratio: string,
+  size: { width: number, height: number }
+}
+
+function gcd(a, b) {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+export const getPhotoProfileList = (list: Array<PhotoProfileType1>): Array<PhotoProfileType2> => {
+  return list.map(item => {
+    const { width, height } = item.size;
+    const divisor = gcd(width, height);
+    const simplifiedWidth = width / divisor;
+    const simplifiedHeight = height / divisor;
+    const ratio = `${simplifiedWidth}:${simplifiedHeight}`;
+    return { ...item, ratio }
+  })
+}

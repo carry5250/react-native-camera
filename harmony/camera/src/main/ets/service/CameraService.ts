@@ -7,7 +7,7 @@
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { camera } from '@kit.CameraKit';
 import { media } from '@kit.MediaKit';
-import { fileIo, fileIo as fs } from '@kit.CoreFileKit';
+import { fileIo as fs } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { JSON } from '@kit.ArkTS';
 import Logger from '../utils/Logger';
@@ -16,7 +16,6 @@ import { RNOHContext } from '@rnoh/react-native-openharmony/ts';
 import {
   AllPermissionStatus,
   CameraProps,
-  CaptureData,
   RecordResponse,
   TakePictureResponse,
   TorchMode,
@@ -25,7 +24,7 @@ import {
 import { isEmptyValue } from '../utils/utils';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
 import { RecordOptions, TakePictureOptions } from '../types';
-import { getFlashMode, getFocusMode, getOrientation, getResolutionSize, getVideoCodec } from './utils';
+import { getFlashMode, getFocusMode, getPhotoProfileList, getResolutionSize, getVideoCodec } from './utils';
 
 
 const TAG: string = 'CameraService';
@@ -68,6 +67,7 @@ class CameraService {
     cameraStatus: CAMERA_STATUS.PENDING_AUTHORIZATION,
     recordAudioPermissionStatus: RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION
   }
+  private ratioList: string[] = ["16:9", "4:3"];
 
 
   private photoProfileObj: camera.Profile = {
@@ -237,9 +237,7 @@ class CameraService {
       this.onCameraInputChange(this.cameraInput, this.curCameraDevice);
       // 会话流程
       await this.sessionFlowFn(this.cameraManager, this.cameraInput, this.previewOutput, this.photoOutput);
-      // if (cameraProps) {
-      //   this.initProps(cameraProps)
-      // }
+
       initSuccessCallBack?.();
     } catch (error) {
       let err = error as BusinessError;
@@ -275,8 +273,8 @@ class CameraService {
     }
     this.photoAsset.uri = '';
     await this.photoOutput?.capture(this.photoCaptureSetting);
-    this.photoAsset.width = this.previewProfileObj.size.width;
-    this.photoAsset.height = this.previewProfileObj.size.height;
+    this.photoAsset.width = this.photoProfileObj.size.width;
+    this.photoAsset.height = this.photoProfileObj.size.height;
     return new Promise((resolve) => {
       const timer = setInterval(() => {
         if (this.photoAsset.uri) {
@@ -302,7 +300,22 @@ class CameraService {
   }
 
   public async getSupportedRatiosAsync(): Promise<string[]> {
-    return;
+    // return new Promise((resolve) => {
+    //   const timer = setTimeout(() => {
+    //     if (this.photoAsset.uri) {
+    //       clearTimeout(timer);
+    //       if (this.ctx) {
+    //         this.ctx.rnInstance.emitDeviceEvent('getSupportedRatiosAsync', this.ratioList);
+    //       }
+    //       resolve(this.ratioList);
+    //     }
+    //   }, 200)
+    // });
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('getSupportedRatiosAsync', this.ratioList);
+    }
+    return this.ratioList
+
   }
 
   public async getSupportedPreviewFpsRange(): Promise<string[]> {
@@ -522,15 +535,19 @@ class CameraService {
     if (photoProfiles.length < 1) {
       return undefined;
     }
-    let index = photoProfiles.findIndex((photoProfile: camera.Profile) => {
-      return photoProfile.size.width === this.photoProfileObj.size.width &&
-        photoProfile.size.height === this.photoProfileObj.size.height &&
-        photoProfile.format === this.photoProfileObj.format;
-    });
-    if (index === -1) {
+    let ratio = this.props.ratio ?? '16:9';
+    let list = getPhotoProfileList(photoProfiles);
+    if (list.length) {
+      this.ratioList = [...new Set(list.map(item => item.ratio))]
+    }
+    const filterList = list.filter(item => item.ratio === ratio);
+    if (filterList.length) {
+      const result = filterList[0] as camera.Profile
+      this.photoProfileObj = result
+      return result
+    } else {
       return photoProfiles[0];
     }
-    return photoProfiles[index];
   }
 
   getVideoProfile(cameraOutputCapability: camera.CameraOutputCapability): camera.VideoProfile | undefined {
