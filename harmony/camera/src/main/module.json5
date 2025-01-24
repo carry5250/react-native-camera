@@ -3,5 +3,17 @@
     name: 'camera',
     type: 'har',
     deviceTypes: ['default'],
+       "requestPermissions": [
+      {
+        "name": "ohos.permission.CAMERA",
+        "reason": "$string:camera_reason",
+        "usedScene": {}
+      },
+      {
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:microphone_reason",
+        "usedScene": {}
+      },
+    ]
   },
 }

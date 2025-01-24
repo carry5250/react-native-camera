@@ -1,6 +1,6 @@
 import { RNPackage, TurboModulesFactory } from "@rnoh/react-native-openharmony/ts";
 import type {
-  TurboModule, 
+  TurboModule,
   TurboModuleContext,
   DescriptorWrapperFactoryByDescriptorTypeCtx,
   DescriptorWrapperFactoryByDescriptorType,
@@ -23,7 +23,6 @@ class RTNCameraModulesFactory extends TurboModulesFactory {
 }
 
 export class RTNCameraPackage extends RNPackage {
-
   createTurboModulesFactory(ctx: TurboModuleContext): TurboModulesFactory {
     return new RTNCameraModulesFactory(ctx);
   }
@@ -33,7 +32,7 @@ export class RTNCameraPackage extends RNPackage {
   ): DescriptorWrapperFactoryByDescriptorType {
     return {
       [RNC.RTNCameraView.NAME]: (ctx) =>
-        new RNC.RTNCameraView.DescriptorWrapper(ctx.descriptor),
+      new RNC.RTNCameraView.DescriptorWrapper(ctx.descriptor),
     };
   }
 }

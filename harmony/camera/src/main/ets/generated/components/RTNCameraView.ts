@@ -25,14 +25,14 @@ export namespace RTNCameraView {
     maxZoom?: number;
     ratio?: string;
     focusDepth?: number;
-    type?: string;
-    faceDetectionMode?: number;
+    type?: 'front' | 'back';
+    faceDetectionMode?: string;
     trackingEnabled?: boolean;
     flashMode?: 'auto' | 'on' | 'off';
     exposure?: number;
     barCodeTypes?: string[];
-    googleVisionBarcodeType?: number;
-    googleVisionBarcodeMode?: number;
+    googleVisionBarcodeType?: string;
+    googleVisionBarcodeMode?: string;
     whiteBalance?: number;
     faceDetectionLandmarks?: number;
     autoFocus?: string;
@@ -45,12 +45,9 @@ export namespace RTNCameraView {
     playSoundOnRecord?: boolean;
     videoStabilizationMode?: number;
     pictureSize?: string;
-    rectOfInterest: {x: number, y: number, width: number, height: number};
-    isAuthorized: boolean;
-    isAuthorizationChecked: boolean;
-    recordAudioPermissionStatus?: 'AUTHORIZED' | 'NOT_AUTHORIZED' | 'PENDING_AUTHORIZATION';
-    text?: string;
-    color?: ColorValue;
+    rectOfInterest?: {x: number, y: number, width: number, height: number};
+    cameraId?: string;
+    detectedImageInEvent?: boolean;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -61,7 +58,7 @@ export namespace RTNCameraView {
   
   export class PropsSelector extends ViewPropsSelector<Props, RawProps> {
     get zoom() {
-      return this.rawProps.zoom ?? 0;
+      return this.rawProps.zoom ?? 1;
     }
     
     get useNativeZoom() {
@@ -77,15 +74,15 @@ export namespace RTNCameraView {
     }
     
     get focusDepth() {
-      return this.rawProps.focusDepth ?? 0;
+      return this.rawProps.focusDepth ?? 1;
     }
     
     get type() {
-      return this.rawProps.type;
+      return this.rawProps.type ?? 'front';
     }
     
     get faceDetectionMode() {
-      return this.rawProps.faceDetectionMode ?? 0;
+      return this.rawProps.faceDetectionMode;
     }
     
     get trackingEnabled() {
@@ -105,11 +102,11 @@ export namespace RTNCameraView {
     }
     
     get googleVisionBarcodeType() {
-      return this.rawProps.googleVisionBarcodeType ?? 0;
+      return this.rawProps.googleVisionBarcodeType;
     }
     
     get googleVisionBarcodeMode() {
-      return this.rawProps.googleVisionBarcodeMode ?? 0;
+      return this.rawProps.googleVisionBarcodeMode;
     }
     
     get whiteBalance() {
@@ -164,31 +161,15 @@ export namespace RTNCameraView {
       return this.rawProps.rectOfInterest;
     }
     
-    get isAuthorized() {
-      return this.rawProps.isAuthorized ?? false;
+    get cameraId() {
+      return this.rawProps.cameraId;
     }
     
-    get isAuthorizationChecked() {
-      return this.rawProps.isAuthorizationChecked ?? false;
-    }
-    
-    get recordAudioPermissionStatus() {
-      return this.rawProps.recordAudioPermissionStatus ?? 'AUTHORIZED';
-    }
-    
-    get text() {
-      return this.rawProps.text;
+    get detectedImageInEvent() {
+      return this.rawProps.detectedImageInEvent ?? false;
     }
     
   
-    get color() {
-        if (this.rawProps.color) {
-          return Color.fromColorValue(this.rawProps.color)
-        } else {
-          return new Color({ r: 0, g: 0, b: 0, a: 255})
-        }
-    }
-    
   }
 
   export type Descriptor = ComponentDescriptor<
@@ -211,7 +192,6 @@ export namespace RTNCameraView {
   }
   
   export interface EventPayloadByName {
-    "textTouch": {type: number}
   }
   
   export class EventEmitter {
@@ -223,6 +203,16 @@ export namespace RTNCameraView {
   }
   
   export interface CommandArgvByName {
+    "takePictureAsync": []
+    "recordAsync": []
+    "refreshAuthorizationStatus": []
+    "stopRecording": []
+    "pausePreview": []
+    "resumePreview": []
+    "getSupportedRatiosAsync": []
+    "checkIfVideoIsValid": []
+    "getCameraIdsAsync": []
+    "isRecording": []
   }
   
   export class CommandReceiver {

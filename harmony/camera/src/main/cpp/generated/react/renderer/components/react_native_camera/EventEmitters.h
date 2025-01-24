@@ -18,10 +18,8 @@ class RTNCameraViewEventEmitter : public ViewEventEmitter {
  public:
   using ViewEventEmitter::ViewEventEmitter;
 
-  struct OnTextTouch {
-      int type;
-    };
-  void onTextTouch(OnTextTouch value) const;
+  
+  
 };
 } // namespace react
 } // namespace facebook

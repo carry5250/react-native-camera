@@ -1,0 +1,1 @@
+export type UnsafeMixed<T> = T;

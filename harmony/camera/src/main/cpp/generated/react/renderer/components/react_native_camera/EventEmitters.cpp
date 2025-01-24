@@ -14,13 +14,5 @@
 namespace facebook {
 namespace react {
 
-void RTNCameraViewEventEmitter::onTextTouch(OnTextTouch $event) const {
-  dispatchEvent("textTouch", [$event=std::move($event)](jsi::Runtime &runtime) {
-    auto $payload = jsi::Object(runtime);
-    $payload.setProperty(runtime, "type", $event.type);
-    return $payload;
-  });
-}
-
 } // namespace react
 } // namespace facebook

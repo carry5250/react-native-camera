@@ -36,11 +36,8 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "videoStabilizationMode", true);
         object.setProperty(rt, "pictureSize", true);
         object.setProperty(rt, "rectOfInterest", "Object");
-        object.setProperty(rt, "isAuthorized", true);
-        object.setProperty(rt, "isAuthorizationChecked", true);
-        object.setProperty(rt, "recordAudioPermissionStatus", true);
-        object.setProperty(rt, "text", true);
-        object.setProperty(rt, "color", true);
+        object.setProperty(rt, "cameraId", true);
+        object.setProperty(rt, "detectedImageInEvent", true);
         return object;
     }
 
@@ -51,7 +48,6 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
 
     facebook::jsi::Object createDirectEventTypes(facebook::jsi::Runtime &rt) override {
         facebook::jsi::Object events(rt);
-        events.setProperty(rt, "topTextTouch", createDirectEvent(rt, "onTextTouch"));
         return events;
     }
 };

@@ -12,12 +12,26 @@
 #include <react/renderer/components/view/ViewProps.h>
 #include <react/renderer/core/PropsParserContext.h>
 #include <react/renderer/core/propsConversions.h>
-#include <react/renderer/graphics/Color.h>
 #include <vector>
 
 namespace facebook {
 namespace react {
 
+enum class RTNCameraViewType { Front, Back };
+
+static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewType &result) {
+  auto string = (std::string)value;
+  if (string == "front") { result = RTNCameraViewType::Front; return; }
+  if (string == "back") { result = RTNCameraViewType::Back; return; }
+  abort();
+}
+
+static inline std::string toString(const RTNCameraViewType &value) {
+  switch (value) {
+    case RTNCameraViewType::Front: return "front";
+    case RTNCameraViewType::Back: return "back";
+  }
+}
 enum class RTNCameraViewFlashMode { Auto, On, Off };
 
 static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewFlashMode &result) {
@@ -33,23 +47,6 @@ static inline std::string toString(const RTNCameraViewFlashMode &value) {
     case RTNCameraViewFlashMode::Auto: return "auto";
     case RTNCameraViewFlashMode::On: return "on";
     case RTNCameraViewFlashMode::Off: return "off";
-  }
-}
-enum class RTNCameraViewRecordAudioPermissionStatus { AUTHORIZED, NOT_AUTHORIZED, PENDING_AUTHORIZATION };
-
-static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewRecordAudioPermissionStatus &result) {
-  auto string = (std::string)value;
-  if (string == "AUTHORIZED") { result = RTNCameraViewRecordAudioPermissionStatus::AUTHORIZED; return; }
-  if (string == "NOT_AUTHORIZED") { result = RTNCameraViewRecordAudioPermissionStatus::NOT_AUTHORIZED; return; }
-  if (string == "PENDING_AUTHORIZATION") { result = RTNCameraViewRecordAudioPermissionStatus::PENDING_AUTHORIZATION; return; }
-  abort();
-}
-
-static inline std::string toString(const RTNCameraViewRecordAudioPermissionStatus &value) {
-  switch (value) {
-    case RTNCameraViewRecordAudioPermissionStatus::AUTHORIZED: return "AUTHORIZED";
-    case RTNCameraViewRecordAudioPermissionStatus::NOT_AUTHORIZED: return "NOT_AUTHORIZED";
-    case RTNCameraViewRecordAudioPermissionStatus::PENDING_AUTHORIZATION: return "PENDING_AUTHORIZATION";
   }
 }
 struct RTNCameraViewAutoFocusPointOfInterestStruct {
@@ -112,19 +109,19 @@ class RTNCameraViewProps final : public ViewProps {
 
 #pragma mark - Props
 
-  int zoom{0};
+  int zoom{1};
   bool useNativeZoom{true};
   int maxZoom{0};
   std::string ratio{};
-  int focusDepth{0};
-  std::string type{};
-  int faceDetectionMode{0};
+  int focusDepth{1};
+  RTNCameraViewType type{RTNCameraViewType::Front};
+  std::string faceDetectionMode{};
   bool trackingEnabled{false};
   RTNCameraViewFlashMode flashMode{RTNCameraViewFlashMode::Auto};
   int exposure{0};
   std::vector<std::string> barCodeTypes{};
-  int googleVisionBarcodeType{0};
-  int googleVisionBarcodeMode{0};
+  std::string googleVisionBarcodeType{};
+  std::string googleVisionBarcodeMode{};
   int whiteBalance{0};
   int faceDetectionLandmarks{0};
   std::string autoFocus{};
@@ -138,11 +135,8 @@ class RTNCameraViewProps final : public ViewProps {
   int videoStabilizationMode{0};
   std::string pictureSize{};
   RTNCameraViewRectOfInterestStruct rectOfInterest{};
-  bool isAuthorized{false};
-  bool isAuthorizationChecked{false};
-  RTNCameraViewRecordAudioPermissionStatus recordAudioPermissionStatus{RTNCameraViewRecordAudioPermissionStatus::AUTHORIZED};
-  std::string text{};
-  SharedColor color{};
+  std::string cameraId{};
+  bool detectedImageInEvent{false};
 };
 
 } // namespace react

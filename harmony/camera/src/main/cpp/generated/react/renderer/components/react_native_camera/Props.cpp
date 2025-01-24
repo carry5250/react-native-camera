@@ -20,19 +20,19 @@ RTNCameraViewProps::RTNCameraViewProps(
     const RTNCameraViewProps &sourceProps,
     const RawProps &rawProps): ViewProps(context, sourceProps, rawProps),
 
-    zoom(convertRawProp(context, rawProps, "zoom", sourceProps.zoom, {0})),
+    zoom(convertRawProp(context, rawProps, "zoom", sourceProps.zoom, {1})),
     useNativeZoom(convertRawProp(context, rawProps, "useNativeZoom", sourceProps.useNativeZoom, {true})),
     maxZoom(convertRawProp(context, rawProps, "maxZoom", sourceProps.maxZoom, {0})),
     ratio(convertRawProp(context, rawProps, "ratio", sourceProps.ratio, {})),
-    focusDepth(convertRawProp(context, rawProps, "focusDepth", sourceProps.focusDepth, {0})),
-    type(convertRawProp(context, rawProps, "type", sourceProps.type, {})),
-    faceDetectionMode(convertRawProp(context, rawProps, "faceDetectionMode", sourceProps.faceDetectionMode, {0})),
+    focusDepth(convertRawProp(context, rawProps, "focusDepth", sourceProps.focusDepth, {1})),
+    type(convertRawProp(context, rawProps, "type", sourceProps.type, {RTNCameraViewType::Front})),
+    faceDetectionMode(convertRawProp(context, rawProps, "faceDetectionMode", sourceProps.faceDetectionMode, {})),
     trackingEnabled(convertRawProp(context, rawProps, "trackingEnabled", sourceProps.trackingEnabled, {false})),
     flashMode(convertRawProp(context, rawProps, "flashMode", sourceProps.flashMode, {RTNCameraViewFlashMode::Auto})),
     exposure(convertRawProp(context, rawProps, "exposure", sourceProps.exposure, {0})),
     barCodeTypes(convertRawProp(context, rawProps, "barCodeTypes", sourceProps.barCodeTypes, {})),
-    googleVisionBarcodeType(convertRawProp(context, rawProps, "googleVisionBarcodeType", sourceProps.googleVisionBarcodeType, {0})),
-    googleVisionBarcodeMode(convertRawProp(context, rawProps, "googleVisionBarcodeMode", sourceProps.googleVisionBarcodeMode, {0})),
+    googleVisionBarcodeType(convertRawProp(context, rawProps, "googleVisionBarcodeType", sourceProps.googleVisionBarcodeType, {})),
+    googleVisionBarcodeMode(convertRawProp(context, rawProps, "googleVisionBarcodeMode", sourceProps.googleVisionBarcodeMode, {})),
     whiteBalance(convertRawProp(context, rawProps, "whiteBalance", sourceProps.whiteBalance, {0})),
     faceDetectionLandmarks(convertRawProp(context, rawProps, "faceDetectionLandmarks", sourceProps.faceDetectionLandmarks, {0})),
     autoFocus(convertRawProp(context, rawProps, "autoFocus", sourceProps.autoFocus, {})),
@@ -46,11 +46,8 @@ RTNCameraViewProps::RTNCameraViewProps(
     videoStabilizationMode(convertRawProp(context, rawProps, "videoStabilizationMode", sourceProps.videoStabilizationMode, {0})),
     pictureSize(convertRawProp(context, rawProps, "pictureSize", sourceProps.pictureSize, {})),
     rectOfInterest(convertRawProp(context, rawProps, "rectOfInterest", sourceProps.rectOfInterest, {})),
-    isAuthorized(convertRawProp(context, rawProps, "isAuthorized", sourceProps.isAuthorized, {false})),
-    isAuthorizationChecked(convertRawProp(context, rawProps, "isAuthorizationChecked", sourceProps.isAuthorizationChecked, {false})),
-    recordAudioPermissionStatus(convertRawProp(context, rawProps, "recordAudioPermissionStatus", sourceProps.recordAudioPermissionStatus, {RTNCameraViewRecordAudioPermissionStatus::AUTHORIZED})),
-    text(convertRawProp(context, rawProps, "text", sourceProps.text, {})),
-    color(convertRawProp(context, rawProps, "color", sourceProps.color, {}))
+    cameraId(convertRawProp(context, rawProps, "cameraId", sourceProps.cameraId, {})),
+    detectedImageInEvent(convertRawProp(context, rawProps, "detectedImageInEvent", sourceProps.detectedImageInEvent, {false}))
       {}
 
 } // namespace react
