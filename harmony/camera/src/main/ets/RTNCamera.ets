@@ -41,7 +41,6 @@ export struct RTNCameraView {
   private cleanUpCallbacks: (() => void)[] = []
   private audioManager = audio.getAudioManager();
   private audioVolumeManager = this.audioManager.getVolumeManager();
-  private prevProps: CameraProps | undefined = undefined;
   //
   @State private descriptorWrapper: RNC.RTNCameraView.DescriptorWrapper = {} as RNC.RTNCameraView.DescriptorWrapper
   @State cameraDeviceIndex: number = 0; // 后置相机
@@ -68,7 +67,7 @@ export struct RTNCameraView {
   @State isScanned: boolean = false;
   @State tipShow: boolean = false;
   @State isInitSuccess: boolean = false;
-  @State currentProps: CameraProps = {};
+  @State props: CameraProps = {};
   @State allPermissionStatus: AllPermissionStatus = {
     cameraStatus: CAMERA_STATUS.PENDING_AUTHORIZATION,
     recordAudioPermissionStatus: RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION
@@ -109,13 +108,11 @@ export struct RTNCameraView {
   private onDescriptorWrapperChange(descriptorWrapper: RNC.RTNCameraView.DescriptorWrapper) {
     this.descriptorWrapper = descriptorWrapper;
     const props = this.descriptorWrapper.props as CameraProps
-    this.currentProps = props;
+    this.props = props;
     this.updateProps(props)
-    this.prevProps = props;
   }
 
   setDisplay() {
-    const props = this.descriptorWrapper.props;
     const width = this.descriptorWrapper.width;
     const height = this.descriptorWrapper.height;
     let displayClass = display.getDefaultDisplaySync(); //获取屏幕信息
@@ -176,10 +173,10 @@ export struct RTNCameraView {
       CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,
-        cameraProps: this.currentProps,
+        cameraProps: props,
         initSuccessCallBack: () => {
           this.isInitSuccess = true;
-          this.initProps(this.currentProps)
+          this.initProps(this.props)
           this.onCameraReady()
         }
       }
@@ -201,38 +198,39 @@ export struct RTNCameraView {
         (command: string, args: (string | number | boolean | object)[]) => {
           Logger.info(TAG, `registerCommandCallback: option,  ${JSON.stringify(args)}`)
           Logger.info(TAG, `registerCommandCallback: command,  ${JSON.stringify(command)}`)
-          if (command === Constants.TACK_PHOTO) {
-            let options = args[0] as TakePictureOptions
-            this.takePhoto(options)
-          }
-          if (command === 'getSupportedRatiosAsync') {
-            CameraService.getSupportedRatiosAsync()
-          }
-          if (command === 'recordAsync') {
-            let options = args[0] as RecordOptions
-            CameraService.recordAsync(options)
-          }
-          if (command === 'stopRecording') {
-            CameraService.stopRecording()
-          }
-          if (command === 'pausePreview') {
-            CameraService.pausePreview()
-          }
-          if (command === 'resumePreview') {
-            CameraService.resumePreview()
-          }
-          if (command === 'getSupportedRatiosAsync') {
-            CameraService.getSupportedRatiosAsync()
-          }
-          if (command === 'checkIfVideoIsValid') {
-            CameraService.checkIfVideoIsValid()
-          }
-          if (command === Constants.REQUEST_DEVICE_CAMERA_AUTHOR) {
-            this.requestDeviceCameraAuthorization()
-
-          }
-          if (command === Constants.CHECK_DEVICE_CAMERA_AUTHOR) {
-            this.checkDeviceCameraAuthorizationStatus();
+          switch (command) {
+            case Constants.TACK_PHOTO:
+              let options = args[0] as TakePictureOptions
+              this.takePhoto(options);
+              break;
+            case "getSupportedRatiosAsync":
+              CameraService.getSupportedRatiosAsync()
+              break;
+            case 'recordAsync':
+              let recordAsyncOptions = args[0] as RecordOptions
+              CameraService.recordAsync(recordAsyncOptions)
+              break;
+            case 'stopRecording':
+              CameraService.stopRecording()
+              break;
+            case 'pausePreview':
+              CameraService.pausePreview()
+              break;
+            case 'resumePreview':
+              CameraService.resumePreview()
+              break;
+            case 'getSupportedRatiosAsync':
+              CameraService.getSupportedRatiosAsync()
+              break;
+            case 'checkIfVideoIsValid':
+              CameraService.checkIfVideoIsValid()
+              break;
+            case Constants.REQUEST_DEVICE_CAMERA_AUTHOR:
+              this.requestDeviceCameraAuthorization()
+              break;
+            case Constants.CHECK_DEVICE_CAMERA_AUTHOR:
+              this.checkDeviceCameraAuthorizationStatus();
+              break;
           }
         });
     }
@@ -255,8 +253,9 @@ export struct RTNCameraView {
   }
 
   async takePhoto(options: TakePictureOptions) {
+    this.ctx.rnInstance.emitDeviceEvent('onPictureTaken', {});
     const result = await CameraService.takePictureAsync(options);
-    if (this.currentProps.playSoundOnCapture) {
+    if (this.props.playSoundOnCapture) {
       AVPlayerService.avPlayerFdSrc();
     }
     this.ctx.rnInstance.emitDeviceEvent('takePictureAsync', result);
@@ -283,10 +282,10 @@ export struct RTNCameraView {
       await CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,
-        cameraProps: this.currentProps,
+        cameraProps: this.props,
         initSuccessCallBack: () => {
           this.isInitSuccess = true;
-          this.initProps(this.currentProps)
+          this.initProps(this.props)
           this.onCameraReady()
         }
       }
@@ -329,6 +328,7 @@ export struct RTNCameraView {
   }
 
   updateProps(props: CameraProps) {
+    CameraService.setProps(props)
     Logger.info(TAG, `CameraProps:${JSON.stringify(props)}`)
     const type = props.type ?? 'back'
     const exposure = props.exposure;
@@ -337,7 +337,6 @@ export struct RTNCameraView {
     const zoom = props.zoom
     const flashMode = getFlashMode(props.flashMode)
     const focusMode = getFocusMode(props.autoFocus);
-    CameraService.setProps(props)
 
     if (!isEmptyValue(type)) {
       CameraService.setCameraType(type);
@@ -429,7 +428,7 @@ export struct RTNCameraView {
             }
           })
           .onActionEnd(() => {
-            if (this.currentProps.useNativeZoom) {
+            if (this.props.useNativeZoom) {
               this.scaleValueChange()
             }
           })

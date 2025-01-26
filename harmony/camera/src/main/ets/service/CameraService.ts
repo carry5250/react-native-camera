@@ -7,7 +7,7 @@
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { camera } from '@kit.CameraKit';
 import { media } from '@kit.MediaKit';
-import { fileIo, fileIo as fs } from '@kit.CoreFileKit';
+import { fileIo as fs } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { JSON } from '@kit.ArkTS';
 import Logger from '../utils/Logger';
@@ -25,6 +25,7 @@ import { isEmptyValue } from '../utils/utils';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
 import { RecordOptions, TakePictureOptions } from '../types';
 import {
+  getDeviceOrientation,
   getFlashMode,
   getFocusMode,
   getOrientation,
@@ -65,7 +66,7 @@ class CameraService {
   private videoOutput: camera.VideoOutput | undefined = undefined;
   private avRecorder: media.AVRecorder | undefined = undefined;
   private session: camera.PhotoSession | camera.VideoSession | undefined = undefined;
-  private curSceneMode: camera.SceneMode = camera.SceneMode.NORMAL_VIDEO;
+  private curSceneMode: camera.SceneMode = camera.SceneMode.NORMAL_PHOTO;
   private curCameraDevice: camera.CameraDevice | undefined = undefined;
   private photoAsset = {} as TakePictureResponse;
   private maxZoom: number | undefined = undefined;
@@ -169,62 +170,69 @@ class CameraService {
     surfaceId: string, cameraDeviceIndex: number, cameraProps?: CameraProps, initSuccessCallBack?: () => void
   }
   ): Promise<void> {
-    const { surfaceId, cameraDeviceIndex, initSuccessCallBack } = initConfig;
+    const { surfaceId, cameraDeviceIndex, initSuccessCallBack, cameraProps } = initConfig;
+    if (cameraProps?.video) {
+      this.curSceneMode = camera.SceneMode.NORMAL_VIDEO
+    } else {
+      this.curSceneMode = camera.SceneMode.NORMAL_PHOTO
+    }
     Logger.debug(TAG, `initCamera cameraDeviceIndex: ${cameraDeviceIndex}`);
     this.surfaceId = surfaceId;
     this.cameraDeviceIndex = cameraDeviceIndex;
+    Logger.debug(TAG, `initCamera cameraDeviceIndex: ${cameraDeviceIndex}`);
     try {
       await this.releaseCamera();
+      // Get Camera Manager instance.
       this.cameraManager = this.getCameraManagerFn();
       if (this.cameraManager === undefined) {
-        this.onError('cameraManager is undefined')
+        Logger.error(TAG, 'cameraManager is undefined');
         return;
       }
+      // Get support for specified camera device objects.
       this.cameras = this.getSupportedCamerasFn(this.cameraManager);
       if (this.cameras.length < 1 || this.cameras.length < cameraDeviceIndex + 1) {
-        this.onError('No camera equipment')
+        this.onError('No camera equipment is available')
         return;
       }
       this.curCameraDevice = this.cameras[cameraDeviceIndex];
       let isSupported = this.isSupportedSceneMode(this.cameraManager, this.curCameraDevice);
       if (!isSupported) {
-        this.onError('The current scene mode is not supported.')
+        Logger.error(TAG, 'The current scene mode is not supported.');
         return;
       }
       let cameraOutputCapability =
         this.cameraManager.getSupportedOutputCapability(this.curCameraDevice, this.curSceneMode);
       let previewProfile = this.getPreviewProfile(cameraOutputCapability);
       if (previewProfile === undefined) {
-        this.onError('The resolution of the current preview stream is not supported.')
+        Logger.error(TAG, 'The resolution of the current preview stream is not supported.');
         return;
       }
       this.previewProfileObj = previewProfile;
+      // Create previewOutput output object.
       this.previewOutput = this.createPreviewOutputFn(this.cameraManager, this.previewProfileObj, surfaceId);
       if (this.previewOutput === undefined) {
-        this.onError('Failed to create the preview stream.')
+        Logger.error(TAG, 'Failed to create the preview stream.');
         return;
       }
+      // Monitor preview events.
       this.previewOutputCallBack(this.previewOutput);
-
-      //拍照模式
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
         let photoProfile = this.getPhotoProfile(cameraOutputCapability);
         if (photoProfile === undefined) {
-          this.onError('The resolution of the current photo stream is not supported.')
+          Logger.error(TAG, 'The resolution of the current photo stream is not supported.');
           return;
         }
         this.photoProfileObj = photoProfile;
+        // Create photoOutput output object.
         this.photoOutput = this.createPhotoOutputFn(this.cameraManager, this.photoProfileObj);
         if (this.photoOutput === undefined) {
           Logger.error(TAG, 'Failed to create the photo stream.');
           return;
         }
-      }
-      // 视频模式
-      else if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
+      } else if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
         let videoProfile = this.getVideoProfile(cameraOutputCapability);
         if (videoProfile === undefined) {
-          this.onError('The resolution of the current video stream is not supported.')
+          Logger.error(TAG, 'The resolution of the current video stream is not supported.');
           return;
         }
         this.videoProfileObj = videoProfile;
@@ -242,37 +250,34 @@ class CameraService {
           return;
         }
       }
-
-      // 创建cameraInput输出对象
+      // Create cameraInput output object.
       this.cameraInput = this.createCameraInputFn(this.cameraManager, this.curCameraDevice);
       if (this.cameraInput === undefined) {
         Logger.error(TAG, 'Failed to create the camera input.');
         return;
       }
-      // 打开相机
+      // Open the camera.
       let isOpenSuccess = await this.cameraInputOpenFn(this.cameraInput);
       if (!isOpenSuccess) {
         Logger.error(TAG, 'Failed to open the camera.');
         return;
       }
-      // 监听相机状态变化
+      // Camera status callback.
       this.onCameraStatusChange(this.cameraManager);
-      // 监听CameraInput
+      // Monitor error events from CameraInput.
       this.onCameraInputChange(this.cameraInput, this.curCameraDevice);
-      // 会话流程
+      // Conversation process.
       await this.sessionFlowFn({
         cameraManager: this.cameraManager,
         cameraInput: this.cameraInput,
         previewOutput: this.previewOutput,
         photoOutput: this.photoOutput,
         videoOutput: this.videoOutput
-      }
-      );
+      });
       initSuccessCallBack?.();
     } catch (error) {
       let err = error as BusinessError;
       Logger.error(TAG, `initCamera fail: ${JSON.stringify(err)}`);
-      this.onError(`initCamera fail: ${JSON.stringify(err)}`)
     }
   }
 
@@ -313,17 +318,20 @@ class CameraService {
     if (!options.quality) {
       options.quality = 1;
     }
-
     if (options.pauseAfterCapture === undefined) {
       options.pauseAfterCapture = false;
     }
     this.photoAsset.uri = '';
-    await this.photoOutput?.capture({
-      ...this.photoCaptureSetting, quality: getPhotoQuality(options.quality),
+    this.photoCaptureSetting = {
+      ...this.photoCaptureSetting,
+      quality: getPhotoQuality(options.quality),
       rotation: getOrientation(options.rotation)
-    });
+    }
+    await this.photoOutput?.capture(this.photoCaptureSetting);
     this.photoAsset.width = this.photoProfileObj.size.width;
     this.photoAsset.height = this.photoProfileObj.size.height;
+    this.photoAsset.pictureOrientation = this.photoCaptureSetting.rotation;
+    this.photoAsset.deviceOrientation = getDeviceOrientation(this.photoCaptureSetting.rotation);
     return new Promise((resolve) => {
       const timer = setInterval(() => {
         if (this.photoAsset.uri) {
@@ -411,44 +419,36 @@ class CameraService {
 
 
   async prepareAVRecorder(): Promise<void> {
-    let audioConfig = {
-      audioChannels: 2,
-      audioCodec: media.CodecMimeType.AUDIO_AAC,
-      audioBitrate: 48000,
-      audioSampleRate: 48000,
-    }
-    let videoConfig: media.AVRecorderProfile = {
-      fileFormat: media.ContainerFormatType.CFT_MPEG_4,
-      videoBitrate: 512000,
-      videoCodec: media.CodecMimeType.VIDEO_AVC,
-      videoFrameWidth: 640, // 视频分辨率的宽
-      videoFrameHeight: 480, // 视频分辨率的高
-      videoFrameRate: 30 // 视频帧率
-    };
-    let videoConfigProfile: media.AVRecorderProfile = {
-      ...audioConfig, ...videoConfig
-    }
+    Logger.info(TAG, 'prepareAVRecorder is called');
     this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
     this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-    let aVVideo = {
+    let videoConfig: media.AVRecorderConfig = {
+      audioSourceType: media.AudioSourceType.AUDIO_SOURCE_TYPE_MIC,
       videoSourceType: media.VideoSourceType.VIDEO_SOURCE_TYPE_SURFACE_YUV,
-      profile: videoConfigProfile,
-      url: `fd://${this.videoFile.fd.toString()}`, // 文件需先由调用者创建，赋予读写权限，将文件fd传给此参数，eg.fd://45--file:///data/media/01.mp4
-      rotation: 90, // 合理值0、90、180、270，非合理值prepare接口将报错
-      location: {
-        latitude: 30, longitude: 130
-      }
-    }
-    try {
-      await this.avRecorder.prepare(aVVideo);
-    } catch (error) {
-      Logger.error(TAG, `avRecorder.prepare.error ${JSON.stringify(error)}`);
-    }
-
+      profile: {
+        audioBitrate: Constants.AUDIO_BITRATE,
+        audioChannels: Constants.AUDIO_CHANNELS,
+        audioCodec: media.CodecMimeType.AUDIO_AAC,
+        audioSampleRate: Constants.AUDIO_SAMPLE_RATE,
+        fileFormat: media.ContainerFormatType.CFT_MPEG_4,
+        videoBitrate: Constants.VIDEO_BITRATE,
+        videoCodec: media.CodecMimeType.VIDEO_AVC,
+        videoFrameWidth: this.videoProfileObj.size.width,
+        videoFrameHeight: this.videoProfileObj.size.height,
+        videoFrameRate: this.videoProfileObj.frameRateRange.max
+      },
+      url: `fd://${this.videoFile.fd.toString()}`,
+      rotation: this.curCameraDevice?.cameraOrientation
+    };
+    Logger.info(TAG, `prepareAVRecorder videoConfig: ${JSON.stringify(videoConfig)}`);
+    await this.avRecorder?.prepare(videoConfig).catch((err: BusinessError): void => {
+      Logger.error(TAG, `prepareAVRecorder prepare err: ${JSON.stringify(err)}`);
+    });
   }
 
   public async recordAsync(options?: RecordOptions): Promise<RecordResponse> {
     Logger.info(TAG, 'startVideo is called');
+    this.isRecording = false;
     try {
       await this.videoOutput?.start();
       await this.avRecorder?.start();
@@ -460,11 +460,10 @@ class CameraService {
     return;
   }
 
-
   /*
    * 停止录制
    * */
-  public async stopRecording(): Promise<void> {
+  async stopRecording(): Promise<void> {
     Logger.info(TAG, 'stopVideo is called');
     if (!this.isRecording) {
       Logger.info(TAG, 'not in recording');
@@ -569,7 +568,7 @@ class CameraService {
     }
     if (this.surfaceId) {
       this.cameraDeviceIndex = cameraIndex;
-      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: cameraIndex })
+      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: cameraIndex, cameraProps: this.props })
     }
   }
 
@@ -676,7 +675,6 @@ class CameraService {
     } catch (error) {
       // 失败返回错误码error.code并处理
       let err = error as BusinessError;
-      Logger.error(TAG, `The getZoomRatio call failed. error code: ${err.code}`);
       this.onError(`The getZoomRatio call failed. error code: ${err.code}`)
     }
     return zoomRatio;
@@ -707,12 +705,10 @@ class CameraService {
       } else if (zoom >= max) {
         zoom = max;
       }
-
       this.session?.setZoomRatio(zoom);
       this.onZoom(zoom);
       Logger.info(TAG, 'setSmoothZoom success.');
     } catch (error) {
-      Logger.error(TAG, `The setSmoothZoom call failed. error code: ${error.code}.`);
       this.onError(`The setSmoothZoom call failed. error code: ${error.code}.`)
     }
   }
@@ -723,7 +719,6 @@ class CameraService {
    */
   async releaseCamera(): Promise<void> {
     Logger.info(TAG, 'releaseCamera is called');
-    // release photo
     try {
       await this.previewOutput?.release();
     } catch (error) {
@@ -870,13 +865,11 @@ class CameraService {
   ): Promise<void> {
     const { cameraManager, cameraInput, previewOutput, photoOutput, videoOutput } = options
     try {
-      // 创建CaptureSession实例
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
         this.session = cameraManager.createSession(this.curSceneMode) as camera.PhotoSession;
       } else if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
         this.session = cameraManager.createSession(this.curSceneMode) as camera.VideoSession;
       }
-
       if (this.session === undefined) {
         return;
       }
@@ -902,9 +895,10 @@ class CameraService {
       }
       this.setFocusModeFn(camera.FocusMode.FOCUS_MODE_AUTO);
       await this.session.start();
+      Logger.info(TAG, 'sessionFlowFn success');
     } catch (error) {
       let err = error as BusinessError;
-      this.onError(`create session fail  : ${JSON.stringify(err)}`)
+      Logger.error(TAG, `sessionFlowFn fail : ${JSON.stringify(err)}`);
     }
   }
 
@@ -920,35 +914,10 @@ class CameraService {
   }
 
 
-  // 通过弹窗获取需要保存到媒体库的位于应用沙箱的图片/视频uri
-  async getMediaLibraryUri(srcFileUri: string, title: string, fileNameExtension: string,
-    photoType: photoAccessHelper.PhotoType): Promise<string> {
-    try {
-      let srcFileUris: Array<string> = [
-      // 应用沙箱的图片/视频uri
-        srcFileUri
-      ];
-      let photoCreationConfigs: Array<photoAccessHelper.PhotoCreationConfig> = [
-        {
-          title: title,
-          fileNameExtension: fileNameExtension,
-          photoType: photoType,
-          subtype: photoAccessHelper.PhotoSubtype.DEFAULT,
-        }
-      ];
-      const desFileUris: Array<string> =
-        await this.phAccessHelper.showAssetsCreationDialog(srcFileUris, photoCreationConfigs);
-      Logger.info(TAG, `showAssetsCreationDialog success, data is:${desFileUris}`);
-      return desFileUris[0];
-    } catch (err) {
-      Logger.error(TAG, `showAssetsCreationDialog failed, errCode is:${err.code},errMsg is:${err.message}`);
-    }
-  }
-
   /*
  * 保存照片
  * */
-  async savePicture(photoAccess: photoAccessHelper.PhotoAsset): Promise<void> {
+  async savePhotoToSandbox(photoAccess: photoAccessHelper.PhotoAsset): Promise<void> {
     let photoFile = `${this.basicPath}/${this.outPathArray[0]}/${Date.now().toString()}.jpeg`;
     let file = fs.openSync(photoAccess.uri, fs.OpenMode.READ_ONLY);
     let stat = fs.statSync(file.fd);
@@ -997,7 +966,7 @@ class CameraService {
           Logger.error(TAG, 'photoAsset is undefined');
           return;
         }
-        this.savePicture(photoAsset);
+        this.savePhotoToSandbox(photoAsset);
       });
     } catch (err) {
       Logger.error(TAG, 'photoOutputCallBack error');
@@ -1085,10 +1054,14 @@ class CameraService {
   setFlashModeFn(flashMode: camera.FlashMode): void {
     // 检测是否有闪关灯
     let hasFlash = this.session?.hasFlash();
-    Logger.info(TAG, `hasFlash success, hasFlash: ${hasFlash}`);
     // 检测闪光灯模式是否支持
     let isFlashModeSupported = this.session?.isFlashModeSupported(flashMode);
-    Logger.info(TAG, `isFlashModeSupported success, isFlashModeSupported: ${isFlashModeSupported}`);
+    if (!hasFlash) {
+      return
+    }
+    if(!isFlashModeSupported){
+      return
+    }
     // 设置闪光灯模式
     const currentFlashMode = this.session?.getFlashMode();
     if (currentFlashMode === flashMode) {
@@ -1150,6 +1123,7 @@ class CameraService {
     // 查询曝光补偿范围
     let exposure = exposureBias
     const result = this.session?.getExposureBiasRange();
+    Logger.debug(TAG, `getExposureBiasRange value ${JSON.stringify(result)}`);
     // if (exposureBias > max) {
     //   exposure = max
     // } else if (exposureBias < min) {

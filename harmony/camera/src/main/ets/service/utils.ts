@@ -13,6 +13,9 @@ export function getResolutionSize(resolution: string): { width: number, height: 
   return Resolution[resolution];
 }
 
+/*
+ * 获取角度
+ * */
 export function getOrientation(resolution: string | number): number {
   switch (resolution) {
     case 'portrait':
@@ -69,22 +72,16 @@ export const getFocusMode = (mode: string): camera.FocusMode => {
   }
 }
 
-interface PhotoProfileType1 {
-  ratio: string,
-  size: { width: number, height: number }
-}
-
-interface PhotoProfileType2 {
-  format?: number,
-  ratio: string,
-  size: { width: number, height: number }
-}
 
 function gcd(a, b) {
   return b === 0 ? a : gcd(b, a % b);
 }
 
-export const getPhotoProfileList = (list: Array<any>): Array<PhotoProfileType2> => {
+export const getPhotoProfileList = (list: Array<any>): Array<{
+  format?: number,
+  ratio: string,
+  size: { width: number, height: number }
+}> => {
   return list.map(item => {
     const { width, height } = item.size;
     const divisor = gcd(width, height);
@@ -103,4 +100,20 @@ export const getPhotoQuality = (quality: number): number => {
   } else {
     return 2
   }
+}
+
+export const getDeviceOrientation = (orientation: number) => {
+  let deviceOrientation;
+  if (orientation > 315 || orientation < 45) {
+    deviceOrientation = 0;
+  } else if (orientation > 45 && orientation < 135) {
+    deviceOrientation = 90;
+  } else if (orientation > 135 && orientation < 225) {
+    deviceOrientation = 180;
+  } else if (orientation > 225 && orientation < 315) {
+    deviceOrientation = 270;
+  } else {
+    deviceOrientation = 0;
+  }
+  return deviceOrientation;
 }
