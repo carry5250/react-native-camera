@@ -158,6 +158,19 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       style,
       onStatusChange,
       onCameraReady,
+      onMountError,
+      onPictureTaken,
+      onRecordingStart,
+      onRecordingEnd,
+      onAudioInterrupted,
+      onAudioConnected,
+      onTap,
+      onDoubleTap,
+      onBarCodeRead,
+      onGoogleVisionBarcodesDetected,
+      onFacesDetected,
+      onFaceDetectionError,
+      onTextRecognized,
       notAuthorizedView,
       pendingAuthorizationView,
       captureAudio,
@@ -203,16 +216,55 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
         } else {
           recordAudioPermissionStatus = RecordAudioPermissionStatusEnum.NOT_AUTHORIZED;
         }
-
         setAudioPermissionsStatus(recordAudioPermissionStatus);
         onStatusChange?.({ recordAudioPermissionStatus, cameraStatus: cameraPermissionsStatus });
       }
     };
 
-    // DeviceEventEmitter.addListener('onStatusChange', (status: onStatusChangeEventType) => {
-    //   onStatusChange?.(status);
-    // });
+    DeviceEventEmitter.addListener('onMountError', (error) => {
+      onMountError?.(error);
+    });
 
+    DeviceEventEmitter.addListener('onPictureTaken', () => {
+      onPictureTaken?.();
+    });
+    DeviceEventEmitter.addListener('onRecordingStart', (event) => {
+      onRecordingStart?.(event);
+    });
+    DeviceEventEmitter.addListener('onRecordingEnd', () => {
+      onRecordingEnd?.();
+    });
+
+    DeviceEventEmitter.addListener('onAudioInterrupted', () => {
+      onAudioInterrupted?.();
+    });
+
+    DeviceEventEmitter.addListener('onTap', (origin) => {
+      onTap?.(origin);
+    });
+
+    DeviceEventEmitter.addListener('onDoubleTap', (origin) => {
+      onDoubleTap?.(origin);
+    });
+
+    DeviceEventEmitter.addListener('onBarCodeRead', (origin) => {
+      onBarCodeRead?.(origin);
+    });
+
+    DeviceEventEmitter.addListener('onGoogleVisionBarcodesDetected', (event) => {
+      onGoogleVisionBarcodesDetected?.(event);
+    });
+
+    DeviceEventEmitter.addListener('onFacesDetected', (response) => {
+      onFacesDetected?.(response);
+    });
+
+    DeviceEventEmitter.addListener('onFaceDetectionError', (response) => {
+      onFaceDetectionError?.(response);
+    });
+    DeviceEventEmitter.addListener('onTextRecognized', (response) => {
+      onTextRecognized?.(response);
+    });
     DeviceEventEmitter.addListener('onCameraReady', () => {
       onCameraReady?.();
     });

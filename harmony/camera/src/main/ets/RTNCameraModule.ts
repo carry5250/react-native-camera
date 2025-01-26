@@ -1,21 +1,21 @@
 import { TurboModule } from '@rnoh/react-native-openharmony/ts';
-import { RTNCamera } from './types/RTNCamera'
+import { RTNCameraTurboModule } from './types/RTNCameraTurboModule'
 import CameraManager from './service/CameraManager';
 
-export class RTNCameraModule extends TurboModule implements RTNCamera.Spec {
+export class RNCameraModule extends TurboModule implements RTNCameraTurboModule.Spec {
   getAvailableCameraDevices(): { cameraId: string; cameraPosition: string; cameraType: number; }[] {
     return CameraManager.getAvailableCameraDevices()
   }
 
-  getCameraIds(): RTNCamera.HardwareCamera[] {
+  getCameraIds(): RTNCameraTurboModule.HardwareCamera[] {
     return CameraManager.getCameraIds()
   }
 
-  takePictureAsync(options: RTNCamera.TakePictureOptions): Promise<RTNCamera.TakePictureResponse> {
+  takePictureAsync(options: RTNCameraTurboModule.TakePictureOptions): Promise<RTNCameraTurboModule.TakePictureResponse> {
     return CameraManager.takePictureAsync(options)
   }
 
-  recordAsync(options: RTNCamera.RecordOptions): Promise<RTNCamera.RecordResponse> {
+  recordAsync(options: RTNCameraTurboModule.RecordOptions): Promise<RTNCameraTurboModule.RecordResponse> {
     return CameraManager.recordAsync(options)
   }
 
@@ -39,7 +39,7 @@ export class RTNCameraModule extends TurboModule implements RTNCamera.Spec {
     return CameraManager.getAvailablePictureSizes()
   }
 
-  getCameraIdsAsync(): Promise<RTNCamera.HardwareCamera[]> {
+  getCameraIdsAsync(): Promise<RTNCameraTurboModule.HardwareCamera[]> {
     return CameraManager.getCameraIdsAsync()
   }
 

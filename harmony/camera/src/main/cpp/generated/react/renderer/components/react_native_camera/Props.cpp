@@ -9,6 +9,7 @@
  */
 
 #include <react/renderer/components/react_native_camera/Props.h>
+#include <folly/dynamic.h>
 #include <react/renderer/core/PropsParserContext.h>
 #include <react/renderer/core/propsConversions.h>
 

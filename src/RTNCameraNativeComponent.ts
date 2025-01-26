@@ -4,6 +4,7 @@ import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNati
 import type { Int32, WithDefault } from 'react-native/Libraries/Types/CodegenTypes';
 import codegenNativeCommands from 'react-native/Libraries/Utilities/codegenNativeCommands';
 import { HardwareCamera, RecordResponse, TakePictureResponse } from '../types';
+import { UnsafeMixed } from './codegenUtils';
 
 export type Status = 'READY' | 'PENDING_AUTHORIZATION' | 'NOT_AUTHORIZED';
 
@@ -78,7 +79,7 @@ interface PropsType {
   whiteBalance?: Int32;
   faceDetectionLandmarks?: Int32;
   autoFocus?: string;
-  autoFocusPointOfInterest?: { x: Int32; y: Int32 };
+  autoFocusPointOfInterest?: UnsafeMixed<{ x: Int32; y: Int32 }>;
   faceDetectionClassifications?: Int32;
   captureAudio?: boolean;
   keepAudioSession?: boolean;
@@ -87,7 +88,7 @@ interface PropsType {
   playSoundOnRecord?: boolean;
   videoStabilizationMode?: Int32;
   pictureSize?: string;
-  rectOfInterest?: Rect;
+  rectOfInterest?: UnsafeMixed<{ x: Int32; y: Int32; width: Int32; height: Int32 }>;
   ///
   cameraId?: string;
   detectedImageInEvent?: boolean;

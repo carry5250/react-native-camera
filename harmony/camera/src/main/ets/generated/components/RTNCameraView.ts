@@ -36,7 +36,7 @@ export namespace RTNCameraView {
     whiteBalance?: number;
     faceDetectionLandmarks?: number;
     autoFocus?: string;
-    autoFocusPointOfInterest?: {x: number, y: number};
+    autoFocusPointOfInterest?: unknown;
     faceDetectionClassifications?: number;
     captureAudio?: boolean;
     keepAudioSession?: boolean;
@@ -45,7 +45,7 @@ export namespace RTNCameraView {
     playSoundOnRecord?: boolean;
     videoStabilizationMode?: number;
     pictureSize?: string;
-    rectOfInterest?: {x: number, y: number, width: number, height: number};
+    rectOfInterest?: unknown;
     cameraId?: string;
     detectedImageInEvent?: boolean;
     video?: boolean;

@@ -92,4 +92,4 @@ export interface Spec extends TurboModule {
   isRecording(): Promise<boolean>;
 }
 
-export default TurboModuleRegistry.get<Spec>('RTNCamera') as Spec;
+export default TurboModuleRegistry.get<Spec>('RTNCameraTurboModule') as Spec;

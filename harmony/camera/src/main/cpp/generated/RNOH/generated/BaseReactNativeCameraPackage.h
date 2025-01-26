@@ -8,12 +8,16 @@
 #include "RNOH/Package.h"
 #include "RNOH/ArkTSTurboModule.h"
 #include "RNOH/generated/components/RTNCameraViewJSIBinder.h"
+#include "RNOH/generated/components/RTNCameraTurboModule.h"
 
 namespace rnoh {
 
 class BaseReactNativeCameraPackageTurboModuleFactoryDelegate : public TurboModuleFactoryDelegate {
   public:
     SharedTurboModule createTurboModule(Context ctx, const std::string &name) const override {
+        if (name == "RTNCameraTurboModule") {
+            return std::make_shared<RTNCameraTurboModule>(ctx, name);
+        }
         return nullptr;
     };
 };

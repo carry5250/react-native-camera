@@ -11,7 +11,6 @@
 
 #include <react/renderer/components/view/ViewProps.h>
 #include <react/renderer/core/PropsParserContext.h>
-#include <react/renderer/core/propsConversions.h>
 #include <vector>
 
 namespace facebook {
@@ -49,59 +48,7 @@ static inline std::string toString(const RTNCameraViewFlashMode &value) {
     case RTNCameraViewFlashMode::Off: return "off";
   }
 }
-struct RTNCameraViewAutoFocusPointOfInterestStruct {
-  int x;
-  int y;
-};
 
-static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewAutoFocusPointOfInterestStruct &result) {
-  auto map = (std::unordered_map<std::string, RawValue>)value;
-
-  auto tmp_x = map.find("x");
-  if (tmp_x != map.end()) {
-    fromRawValue(context, tmp_x->second, result.x);
-  }
-  auto tmp_y = map.find("y");
-  if (tmp_y != map.end()) {
-    fromRawValue(context, tmp_y->second, result.y);
-  }
-}
-
-static inline std::string toString(const RTNCameraViewAutoFocusPointOfInterestStruct &value) {
-  return "[Object RTNCameraViewAutoFocusPointOfInterestStruct]";
-}
-
-struct RTNCameraViewRectOfInterestStruct {
-  int x;
-  int y;
-  int width;
-  int height;
-};
-
-static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewRectOfInterestStruct &result) {
-  auto map = (std::unordered_map<std::string, RawValue>)value;
-
-  auto tmp_x = map.find("x");
-  if (tmp_x != map.end()) {
-    fromRawValue(context, tmp_x->second, result.x);
-  }
-  auto tmp_y = map.find("y");
-  if (tmp_y != map.end()) {
-    fromRawValue(context, tmp_y->second, result.y);
-  }
-  auto tmp_width = map.find("width");
-  if (tmp_width != map.end()) {
-    fromRawValue(context, tmp_width->second, result.width);
-  }
-  auto tmp_height = map.find("height");
-  if (tmp_height != map.end()) {
-    fromRawValue(context, tmp_height->second, result.height);
-  }
-}
-
-static inline std::string toString(const RTNCameraViewRectOfInterestStruct &value) {
-  return "[Object RTNCameraViewRectOfInterestStruct]";
-}
 class RTNCameraViewProps final : public ViewProps {
  public:
   RTNCameraViewProps() = default;
@@ -125,7 +72,7 @@ class RTNCameraViewProps final : public ViewProps {
   int whiteBalance{0};
   int faceDetectionLandmarks{0};
   std::string autoFocus{};
-  RTNCameraViewAutoFocusPointOfInterestStruct autoFocusPointOfInterest{};
+  folly::dynamic autoFocusPointOfInterest{};
   int faceDetectionClassifications{0};
   bool captureAudio{false};
   bool keepAudioSession{false};
@@ -134,7 +81,7 @@ class RTNCameraViewProps final : public ViewProps {
   bool playSoundOnRecord{false};
   int videoStabilizationMode{0};
   std::string pictureSize{};
-  RTNCameraViewRectOfInterestStruct rectOfInterest{};
+  folly::dynamic rectOfInterest{};
   std::string cameraId{};
   bool detectedImageInEvent{false};
   bool video{false};

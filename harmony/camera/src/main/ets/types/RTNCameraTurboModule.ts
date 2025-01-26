@@ -8,8 +8,8 @@
  */
 
 
-export namespace RTNCamera {
-  export const NAME = 'RTNCamera' as const
+export namespace RTNCameraTurboModule {
+  export const NAME = 'RTNCameraTurboModule' as const
 
   export type HardwareCamera = {deviceType?: string, id: string, type: number}
   

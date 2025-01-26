@@ -65,12 +65,7 @@
     "codegen-lib": "react-native codegen-lib-harmony --no-safety-check --npm-package-name react-native-camera --cpp-output-path ./harmony/camera/src/main/cpp/generated --ets-output-path ./harmony/camera/src/main/ets/generated --arkts-components-spec-paths ./src "
   },
   "harmony": {
-    "alias": "react-native-camera",
-    "codegenConfig": {
-      "specPaths": [
-        "./src"
-      ]
-    }
+    "alias": "react-native-camera"
   },
   "types": "types/index.d.ts",
   "release": {

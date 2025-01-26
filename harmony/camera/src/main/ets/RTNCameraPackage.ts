@@ -5,20 +5,20 @@ import type {
   DescriptorWrapperFactoryByDescriptorTypeCtx,
   DescriptorWrapperFactoryByDescriptorType,
 } from "@rnoh/react-native-openharmony/ts";
-import { RTNCamera } from './types/RTNCamera'
+import {RTNCameraTurboModule} from './types/RTNCameraTurboModule'
 import { RNC } from "./generated/ts";
-import { RTNCameraModule } from './RTNCameraModule'
+import { RNCameraModule } from './RTNCameraModule'
 
 class RTNCameraModulesFactory extends TurboModulesFactory {
   createTurboModule(name: string): TurboModule | null {
-    if (name === RTNCamera.NAME) {
-      return new RTNCameraModule(this.ctx);
+    if (name === RTNCameraTurboModule.NAME) {
+      return new RNCameraModule(this.ctx);
     }
     return null;
   }
 
   hasTurboModule(name: string): boolean {
-    return name === RTNCamera.NAME;
+    return name === RTNCameraTurboModule.NAME;
   }
 }
 

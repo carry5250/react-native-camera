@@ -26,7 +26,7 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "whiteBalance", true);
         object.setProperty(rt, "faceDetectionLandmarks", true);
         object.setProperty(rt, "autoFocus", true);
-        object.setProperty(rt, "autoFocusPointOfInterest", "Object");
+        object.setProperty(rt, "autoFocusPointOfInterest", true);
         object.setProperty(rt, "faceDetectionClassifications", true);
         object.setProperty(rt, "captureAudio", true);
         object.setProperty(rt, "keepAudioSession", true);
@@ -35,7 +35,7 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "playSoundOnRecord", true);
         object.setProperty(rt, "videoStabilizationMode", true);
         object.setProperty(rt, "pictureSize", true);
-        object.setProperty(rt, "rectOfInterest", "Object");
+        object.setProperty(rt, "rectOfInterest", true);
         object.setProperty(rt, "cameraId", true);
         object.setProperty(rt, "detectedImageInEvent", true);
         object.setProperty(rt, "video", true);
