@@ -1,8 +1,8 @@
 // @flow
 import { NativeModules } from 'react-native';
-
+import NativeFaceDetectorModule from './FaceDetectorModule'
 const faceDetectionDisabledMessage = "Face detection is disabled";
-const FaceDetectorModule = NativeModules.RNFaceDetector || {
+const FaceDetectorModule = NativeFaceDetectorModule || {
   stubbed: true,
   Mode: {},
   Landmarks: {},
@@ -39,20 +39,20 @@ export type FaceFeature = {
 };
 
 type DetectionOptions = {
-  mode?: keyof typeof FaceDetectorModule.Mode | undefined,
-  detectLandmarks?: keyof typeof FaceDetectorModule.Landmarks | undefined,
-  runClassifications?: keyof typeof FaceDetectorModule.Classifications | undefined,
+  mode?: any,
+  detectLandmarks?: any,
+  runClassifications?: any,
 };
 
 export default class FaceDetector {
   static Constants = {
-    Mode: FaceDetectorModule.Mode,
-    Landmarks: FaceDetectorModule.Landmarks,
-    Classifications: FaceDetectorModule.Classifications,
+    Mode: {},
+    Landmarks: {},
+    Classifications: {},
   };
 
   static detectFacesAsync(uri: string, options?: DetectionOptions): Promise<Array<FaceFeature>> {
-    return FaceDetectorModule.detectFaces({...(options || {}), uri });
+    return FaceDetectorModule.detectFaces(uri)
   }
 }
 

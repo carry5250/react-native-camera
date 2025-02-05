@@ -8,7 +8,7 @@ interface Point<T = number> {
   y: T;
 }
 
-type FaceFeature = {
+export type FaceFeature = {
   bounds: {
     size: {
       width: number,

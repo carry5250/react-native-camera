@@ -8,17 +8,19 @@ import type {
 import {RTNCameraTurboModule} from './types/RTNCameraTurboModule'
 import { RNC } from "./generated/ts";
 import { RNCameraModule } from './RTNCameraModule'
+import { FaceDetectorModuleSpec } from './types/FaceDetectorModuleSpec'
+import { FaceDetectorModule } from './FaceDetectorModule'
 
 class RTNCameraModulesFactory extends TurboModulesFactory {
   createTurboModule(name: string): TurboModule | null {
-    if (name === RTNCameraTurboModule.NAME) {
-      return new RNCameraModule(this.ctx);
+    if (name === FaceDetectorModuleSpec.NAME) {
+      return new FaceDetectorModule(this.ctx);
     }
     return null;
   }
 
   hasTurboModule(name: string): boolean {
-    return name === RTNCameraTurboModule.NAME;
+    return name === FaceDetectorModuleSpec.NAME;
   }
 }
 
