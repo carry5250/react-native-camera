@@ -5,42 +5,44 @@
 #pragma once
 
 #include <react/renderer/components/react_native_camera/ComponentDescriptors.h>
-#include "RNOH/Package.h"
 #include "RNOH/ArkTSTurboModule.h"
+#include "RNOH/Package.h"
 #include "RNOH/generated/components/RTNCameraViewJSIBinder.h"
-#include "RNOH/generated/turbo_modules/RTNCameraTurboModule.h"
 #include "RNOH/generated/turbo_modules/FaceDetectorModule.h"
+#include "RNOH/generated/turbo_modules/RTNCameraTurboModule.h"
 namespace rnoh {
 
 class BaseReactNativeCameraPackageTurboModuleFactoryDelegate : public TurboModuleFactoryDelegate {
-  public:
+public:
     SharedTurboModule createTurboModule(Context ctx, const std::string &name) const override {
         if (name == "FaceDetectorModule") {
             return std::make_shared<FaceDetectorModule>(ctx, name);
+        }
+        if (name == "RTNCameraTurboModule") {
+            return std::make_shared<RTNCameraTurboModule>(ctx, name);
         }
         return nullptr;
     };
 };
 
 class BaseReactNativeCameraPackageEventEmitRequestHandler : public EventEmitRequestHandler {
-  public:
+public:
     void handleEvent(Context const &ctx) override {
         auto eventEmitter = ctx.shadowViewRegistry->getEventEmitter<facebook::react::EventEmitter>(ctx.tag);
         if (eventEmitter == nullptr) {
             return;
         }
 
-        std::vector<std::string> supportedEventNames = {
-        };
-        if (std::find(supportedEventNames.begin(), supportedEventNames.end(), ctx.eventName) != supportedEventNames.end()) {
+        std::vector<std::string> supportedEventNames = {};
+        if (std::find(supportedEventNames.begin(), supportedEventNames.end(), ctx.eventName) !=
+            supportedEventNames.end()) {
             eventEmitter->dispatchEvent(ctx.eventName, ArkJS(ctx.env).getDynamic(ctx.payload));
-        }    
+        }
     }
 };
 
-
 class BaseReactNativeCameraPackage : public Package {
-  public:
+public:
     BaseReactNativeCameraPackage(Package::Context ctx) : Package(ctx){};
 
     std::unique_ptr<TurboModuleFactoryDelegate> createTurboModuleFactoryDelegate() override {
