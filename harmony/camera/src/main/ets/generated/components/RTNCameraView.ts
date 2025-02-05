@@ -28,7 +28,7 @@ export namespace RTNCameraView {
     type?: 'front' | 'back';
     faceDetectionMode?: string;
     trackingEnabled?: boolean;
-    flashMode?: 'auto' | 'on' | 'off';
+    flashMode?: 'auto' | 'on' | 'off' | 'torch';
     exposure?: number;
     barCodeTypes?: string[];
     googleVisionBarcodeType?: string;
@@ -218,6 +218,8 @@ export namespace RTNCameraView {
     "checkIfVideoIsValid": []
     "getCameraIdsAsync": []
     "isRecording": []
+    "getSupportedPreviewFpsRange": []
+    "getAvailablePictureSizes": []
   }
   
   export class CommandReceiver {

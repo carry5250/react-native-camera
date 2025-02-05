@@ -117,8 +117,7 @@ class CameraManager {
   }
 
   async refreshAuthorizationStatus(): Promise<void> {
-    const result = await CameraService.refreshAuthorizationStatus();
-    return result;
+   await this.requestDeviceCameraAuthorization()
   }
 
   stopRecording(): void {

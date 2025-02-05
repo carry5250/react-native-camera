@@ -37,30 +37,8 @@ export type FaceFeature = {
   yawAngle?: Int32;
   rollAngle?: Int32;
 };
-type TrackedTextFeature = {
-  type: string;
-  bounds: {
-    size: {
-      width: Int32;
-      height: Int32;
-    };
-    origin: {
-      x: Int32;
-      y: Int32;
-    };
-  };
-  value: string;
-  components: Array<TrackedTextFeature>;
-};
 
-type Rect = {
-  x: Int32;
-  y: Int32;
-  width: Int32;
-  height: Int32;
-};
-
-type FlashModeType = WithDefault<'auto' | 'on' | 'off', 'auto'>;
+type FlashModeType = WithDefault<'auto' | 'on' | 'off' | 'torch', 'auto'>;
 
 interface PropsType {
   zoom?: WithDefault<Int32, 1.0>;
@@ -112,6 +90,8 @@ export const CameraCommands = codegenNativeCommands<CameraCommandsType>({
     'checkIfVideoIsValid',
     'getCameraIdsAsync',
     'isRecording',
+    'getSupportedPreviewFpsRange',
+    'getAvailablePictureSizes'
   ],
 });
 
@@ -128,6 +108,12 @@ export interface CameraCommandsType {
   checkIfVideoIsValid(viewRef: React.ElementRef<CameraComponentType>): Promise<boolean>;
   getCameraIdsAsync: (viewRef: React.ElementRef<CameraComponentType>) => Promise<HardwareCamera[]>;
   isRecording: (viewRef: React.ElementRef<CameraComponentType>) => Promise<boolean>;
+  getSupportedPreviewFpsRange: (
+    viewRef: React.ElementRef<CameraComponentType>,
+  ) => Promise<string[]>;
+  getAvailablePictureSizes: (
+    viewRef: React.ElementRef<CameraComponentType>,
+  ) => Promise<string[]>;
 }
 
 export type OnTouchEventData = Readonly<{

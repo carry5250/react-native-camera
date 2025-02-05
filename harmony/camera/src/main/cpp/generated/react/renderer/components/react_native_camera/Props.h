@@ -31,13 +31,14 @@ static inline std::string toString(const RTNCameraViewType &value) {
     case RTNCameraViewType::Back: return "back";
   }
 }
-enum class RTNCameraViewFlashMode { Auto, On, Off };
+enum class RTNCameraViewFlashMode { Auto, On, Off, Torch };
 
 static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RTNCameraViewFlashMode &result) {
   auto string = (std::string)value;
   if (string == "auto") { result = RTNCameraViewFlashMode::Auto; return; }
   if (string == "on") { result = RTNCameraViewFlashMode::On; return; }
   if (string == "off") { result = RTNCameraViewFlashMode::Off; return; }
+  if (string == "torch") { result = RTNCameraViewFlashMode::Torch; return; }
   abort();
 }
 
@@ -46,6 +47,7 @@ static inline std::string toString(const RTNCameraViewFlashMode &value) {
     case RTNCameraViewFlashMode::Auto: return "auto";
     case RTNCameraViewFlashMode::On: return "on";
     case RTNCameraViewFlashMode::Off: return "off";
+    case RTNCameraViewFlashMode::Torch: return "torch";
   }
 }
 

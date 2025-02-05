@@ -344,10 +344,6 @@ class CameraService {
   }
 
 
-  public async refreshAuthorizationStatus(): Promise<void> {
-    return;
-  }
-
   public async getAvailablePictureSizes(): Promise<string[]> {
     return;
   }
@@ -359,8 +355,18 @@ class CameraService {
     return this.ratioList
   }
 
-  public async getSupportedPreviewFpsRange(): Promise<string[]> {
-    return;
+  public async getSupportedPreviewFpsRange() {
+    let result = [];
+    let supportedFrameRatesArray: Array<camera.FrameRateRange> = this.previewOutput?.getSupportedFrameRates();
+    if (supportedFrameRatesArray.length) {
+      result = supportedFrameRatesArray.map(item => {
+        return { MINIMUM_FPS: item.min, MAXIMUM_FPS: item.max }
+      })
+    }
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('getSupportedPreviewFpsRange', result);
+    }
+    return result;
   }
 
   public async checkIfVideoIsValid(): Promise<boolean> {
@@ -1059,7 +1065,7 @@ class CameraService {
     if (!hasFlash) {
       return
     }
-    if(!isFlashModeSupported){
+    if (!isFlashModeSupported) {
       return
     }
     // 设置闪光灯模式
@@ -1124,13 +1130,16 @@ class CameraService {
     let exposure = exposureBias
     const result = this.session?.getExposureBiasRange();
     Logger.debug(TAG, `getExposureBiasRange value ${JSON.stringify(result)}`);
-    // if (exposureBias > max) {
-    //   exposure = max
-    // } else if (exposureBias < min) {
-    //   exposure = min;
-    // }
-    // // 设置曝光补偿
-    // this.session?.setExposureBias(exposure);
+    if (result?.length) {
+      const [min, max] = result;
+      if (exposureBias > max) {
+        exposure = max
+      } else if (exposureBias < min) {
+        exposure = min;
+      }
+      // 设置曝光补偿
+      this.session?.setExposureBias(exposure);
+    }
   }
 
   /**

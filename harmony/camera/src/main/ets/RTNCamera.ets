@@ -231,6 +231,15 @@ export struct RTNCameraView {
             case Constants.CHECK_DEVICE_CAMERA_AUTHOR:
               this.checkDeviceCameraAuthorizationStatus();
               break;
+            case 'getSupportedPreviewFpsRange':
+              CameraService.getSupportedPreviewFpsRange()
+              break;
+            case 'getAvailablePictureSizes':
+              CameraService.getAvailablePictureSizes()
+              break;
+            case 'refreshAuthorizationStatus':
+              CameraManager.refreshAuthorizationStatus();
+              break;
           }
         });
     }

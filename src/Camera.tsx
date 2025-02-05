@@ -70,6 +70,8 @@ const CameraCommands = codegenNativeCommands<CameraCommandsType>({
     'checkIfVideoIsValid',
     'getCameraIdsAsync',
     'isRecording',
+    'getSupportedPreviewFpsRange',
+    'getAvailablePictureSizes',
   ],
 });
 
@@ -102,6 +104,10 @@ interface CameraCommandsType {
   checkIfVideoIsValid(viewRef: React.ElementRef<CameraComponentType>): Promise<boolean>;
   getCameraIdsAsync: (viewRef: React.ElementRef<CameraComponentType>) => Promise<HardwareCamera[]>;
   isRecording: (viewRef: React.ElementRef<CameraComponentType>) => Promise<boolean>;
+  getSupportedPreviewFpsRange: (
+    viewRef: React.ElementRef<CameraComponentType>,
+  ) => Promise<string[]>;
+  getAvailablePictureSizes: (viewRef: React.ElementRef<CameraComponentType>) => Promise<string[]>;
 }
 
 export interface CameraRefType extends Omit<CameraCommandsType, CameraCommands> {
@@ -115,6 +121,7 @@ export interface CameraRefType extends Omit<CameraCommandsType, CameraCommands> 
   checkIfVideoIsValid(): Promise<boolean>;
   getCameraIdsAsync: () => Promise<HardwareCamera[]>;
   isRecording: () => Promise<boolean>;
+  getSupportedPreviewFpsRange: () => Promise<string[]>;
 }
 interface PermissionStatusType {
   cameraStatus?: string;
@@ -353,7 +360,7 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
     const getCameraIdsAsync = (): Promise<HardwareCamera[]> => {
       return new Promise((resolve) => {
         const onEventListener = DeviceEventEmitter.addListener(
-          'checkIfVideoIsValid',
+          'getCameraIdsAsync',
           (data: HardwareCamera[]) => {
             resolve(data);
             onEventListener.remove();
@@ -375,6 +382,34 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       });
     };
 
+    const getSupportedPreviewFpsRange = (): Promise<string[]> => {
+      return new Promise((resolve) => {
+        const onEventListener = DeviceEventEmitter.addListener(
+          'getSupportedPreviewFpsRange',
+          (data) => {
+            resolve(data);
+            onEventListener.remove();
+          },
+        );
+        if (!CameraRef.current) throw new Error('CameraRef.current is NaN');
+        CameraCommands.isRecording(CameraRef.current);
+      });
+    };
+
+    const getAvailablePictureSizes = (): Promise<string[]> => {
+      return new Promise((resolve) => {
+        const onEventListener = DeviceEventEmitter.addListener(
+          'getAvailablePictureSizes',
+          (data) => {
+            resolve(data);
+            onEventListener.remove();
+          },
+        );
+        if (!CameraRef.current) throw new Error('CameraRef.current is NaN');
+        CameraCommands.isRecording(CameraRef.current);
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       takePictureAsync,
       recordAsync,
@@ -386,6 +421,8 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       checkIfVideoIsValid,
       getCameraIdsAsync,
       isRecording,
+      getSupportedPreviewFpsRange,
+      getAvailablePictureSizes,
     }));
 
     if (cameraPermissionsStatus === CAMERA_STATUS.NOT_AUTHORIZED && notAuthorizedView) {
