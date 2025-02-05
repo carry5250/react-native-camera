@@ -117,7 +117,7 @@ class CameraManager {
   }
 
   async refreshAuthorizationStatus(): Promise<void> {
-   await this.requestDeviceCameraAuthorization()
+    await this.requestDeviceCameraAuthorization()
   }
 
   stopRecording(): void {
@@ -138,9 +138,12 @@ class CameraManager {
   }
 
   getCameraIdsAsync(): Promise<HardwareCamera[]> {
-    return new Promise((resolve, reject) => {
-      const ids = this.getCameraIds();
-      resolve(ids)
+    return new Promise((resolve) => {
+      let timer = setTimeout(() => {
+        const ids = this.getCameraIds();
+        resolve(ids)
+        clearTimeout(timer)
+      }, 0)
     })
   }
 

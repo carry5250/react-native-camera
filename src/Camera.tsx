@@ -392,7 +392,7 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
           },
         );
         if (!CameraRef.current) throw new Error('CameraRef.current is NaN');
-        CameraCommands.isRecording(CameraRef.current);
+        CameraCommands.getSupportedPreviewFpsRange(CameraRef.current);
       });
     };
 
@@ -406,7 +406,7 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
           },
         );
         if (!CameraRef.current) throw new Error('CameraRef.current is NaN');
-        CameraCommands.isRecording(CameraRef.current);
+        CameraCommands.getAvailablePictureSizes(CameraRef.current);
       });
     };
 

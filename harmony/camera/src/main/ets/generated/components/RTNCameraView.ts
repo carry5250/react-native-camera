@@ -43,7 +43,7 @@ export namespace RTNCameraView {
     useCamera2Api?: boolean;
     playSoundOnCapture?: boolean;
     playSoundOnRecord?: boolean;
-    videoStabilizationMode?: number;
+    videoStabilizationMode?: string;
     pictureSize?: string;
     rectOfInterest?: unknown;
     cameraId?: string;
@@ -151,7 +151,7 @@ export namespace RTNCameraView {
     }
     
     get videoStabilizationMode() {
-      return this.rawProps.videoStabilizationMode ?? 0;
+      return this.rawProps.videoStabilizationMode;
     }
     
     get pictureSize() {

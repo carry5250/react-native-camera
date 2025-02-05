@@ -169,11 +169,10 @@ export struct RTNCameraView {
    */
   subscribeToLifecycleEvents() {
     this.ctx.rnInstance.subscribeToLifecycleEvents("FOREGROUND", () => {
-      const props = this.descriptorWrapper['descriptor'].rawProps as CameraProps;
       CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,
-        cameraProps: props,
+        cameraProps: this.props,
         initSuccessCallBack: () => {
           this.isInitSuccess = true;
           this.initProps(this.props)
@@ -240,9 +239,18 @@ export struct RTNCameraView {
             case 'refreshAuthorizationStatus':
               CameraManager.refreshAuthorizationStatus();
               break;
+
+            case 'getCameraIdsAsync':
+              this.getCameraIdsAsync();
+              break;
           }
         });
     }
+  }
+
+  async getCameraIdsAsync() {
+    let result = await CameraManager.getCameraIdsAsync()
+    this.ctx.rnInstance.emitDeviceEvent('getCameraIdsAsync', result);
   }
 
   /*

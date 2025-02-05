@@ -81,7 +81,7 @@ class RTNCameraViewProps final : public ViewProps {
   bool useCamera2Api{false};
   bool playSoundOnCapture{false};
   bool playSoundOnRecord{false};
-  int videoStabilizationMode{0};
+  std::string videoStabilizationMode{};
   std::string pictureSize{};
   folly::dynamic rectOfInterest{};
   std::string cameraId{};

@@ -6,15 +6,7 @@
  * @flow strict-local
  */
 import React, {useRef, useState} from 'react';
-import {
-  Alert,
-  Button,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-} from 'react-native';
+import {Alert, SafeAreaView, StyleSheet, Text, View} from 'react-native';
 import {
   RNCamera,
   CameraRefType,
@@ -31,6 +23,7 @@ const CameraDemo = () => {
   const [flash, setflash] = useState<'auto' | 'on' | 'off' | 'torch'>('auto');
   const [maxZoom, setMaxZoom] = useState<number>(10);
   const [errorText, seterrorText] = useState<string>('');
+  const [exposure, setexposure] = useState<number>(0);
 
   const onStatusChange = (e: any) => {
     console.log('我收到了', JSON.stringify(e));
@@ -75,6 +68,15 @@ const CameraDemo = () => {
   const onPictureTaken = () => {
     console.log('我按下了拍照！！！');
   };
+  const toggleExposure = () => {
+    setexposure(v => (v === 0 ? 1 : 0));
+  };
+  const onTap = (e: any) => {
+    console.log('onTap', JSON.stringify(e));
+  };
+  const onDoubleTap = (e: any) => {
+    console.log('onDoubleTap', JSON.stringify(e));
+  };
 
   return (
     <SafeAreaView>
@@ -110,7 +112,7 @@ const CameraDemo = () => {
               setMaxZoom(v => (v === 10 ? 5 : 10));
             }}
           />
-          <CustomButton title="reset" onPress={onReset} />
+
           <CustomButton
             title="  +   "
             onPress={() => {
@@ -123,9 +125,14 @@ const CameraDemo = () => {
               toggleZoom('-');
             }}
           />
+          <CustomButton
+            title={`exposure:${exposure}`}
+            onPress={toggleExposure}
+          />
         </View>
         <RNCamera
           ref={ref}
+          exposure={exposure}
           playSoundOnCapture={playSoundOnCapture}
           useNativeZoom={useNativeZoom}
           captureAudio
@@ -140,6 +147,8 @@ const CameraDemo = () => {
           // pendingAuthorizationView={<Text>等待授权</Text>}
           onMountError={onMountError}
           onPictureTaken={onPictureTaken}
+          onTap={onTap}
+          onDoubleTap={onDoubleTap}
         />
         <View style={styles.action}>
           <CustomButton
@@ -151,6 +160,7 @@ const CameraDemo = () => {
               });
               if (res) {
                 Alert.alert(JSON.stringify(res));
+                setphotoResult(JSON.stringify(res));
               }
             }}
           />
@@ -161,9 +171,31 @@ const CameraDemo = () => {
               const res = await ref.current?.getSupportedRatiosAsync();
               if (res) {
                 Alert.alert(JSON.stringify(res));
+                console.log(JSON.stringify(res));
               }
             }}
           />
+          <CustomButton
+            title={'getCameraIdsAsync'}
+            onPress={async () => {
+              const res = await ref.current?.getCameraIdsAsync();
+              if (res) {
+                Alert.alert(JSON.stringify(res));
+                console.log(JSON.stringify(res));
+              }
+            }}
+          />
+          <CustomButton
+            title={'getSupportedPreviewFpsRange'}
+            onPress={async () => {
+              const res = await ref.current?.getSupportedPreviewFpsRange();
+              if (res) {
+                Alert.alert(JSON.stringify(res));
+                console.log(JSON.stringify(res));
+              }
+            }}
+          />
+          <CustomButton title="reset" onPress={onReset} />
         </View>
       </View>
     </SafeAreaView>
@@ -174,7 +206,7 @@ export default CameraDemo;
 
 const styles = StyleSheet.create({
   flipText: {
-    color: 'white',
+    color: 'red',
     fontSize: 15,
     margin: 4,
     padding: 4,
@@ -210,7 +242,7 @@ const styles = StyleSheet.create({
   textBox: {
     width: '100%',
     position: 'absolute',
-    top: '30%',
+    top: '15%',
     zIndex: 10,
   },
 });

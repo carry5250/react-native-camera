@@ -44,7 +44,7 @@ RTNCameraViewProps::RTNCameraViewProps(
     useCamera2Api(convertRawProp(context, rawProps, "useCamera2Api", sourceProps.useCamera2Api, {false})),
     playSoundOnCapture(convertRawProp(context, rawProps, "playSoundOnCapture", sourceProps.playSoundOnCapture, {false})),
     playSoundOnRecord(convertRawProp(context, rawProps, "playSoundOnRecord", sourceProps.playSoundOnRecord, {false})),
-    videoStabilizationMode(convertRawProp(context, rawProps, "videoStabilizationMode", sourceProps.videoStabilizationMode, {0})),
+    videoStabilizationMode(convertRawProp(context, rawProps, "videoStabilizationMode", sourceProps.videoStabilizationMode, {})),
     pictureSize(convertRawProp(context, rawProps, "pictureSize", sourceProps.pictureSize, {})),
     rectOfInterest(convertRawProp(context, rawProps, "rectOfInterest", sourceProps.rectOfInterest, {})),
     cameraId(convertRawProp(context, rawProps, "cameraId", sourceProps.cameraId, {})),

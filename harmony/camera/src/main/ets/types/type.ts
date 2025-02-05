@@ -202,7 +202,7 @@ export type CameraProps = {
   useCamera2Api?: boolean,
   playSoundOnCapture?: boolean,
   playSoundOnRecord?: boolean,
-  videoStabilizationMode?: number,
+  videoStabilizationMode?: string,
   pictureSize?: string,
   rectOfInterest?: Rect,
   cameraId?: string;
@@ -568,7 +568,7 @@ export interface RNCameraProps {
   cameraViewDimensions?: Object;
 
   // -- IOS ONLY PROPS
-  videoStabilizationMode?: keyof VideoStabilization;
+  videoStabilizationMode?: string;
   defaultVideoQuality?: keyof VideoQuality;
 
   /* if true, audio session will not be released on component unmount */

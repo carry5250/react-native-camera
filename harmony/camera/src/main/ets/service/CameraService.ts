@@ -343,6 +343,48 @@ class CameraService {
     });
   }
 
+  public onRecordingStart() {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onRecordingStart', {});
+    }
+  }
+
+  public onRecordingEnd() {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onRecordingEnd', {});
+    }
+  }
+
+  public onAudioInterrupted() {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onAudioInterrupted', {});
+    }
+  }
+
+  public onAudioConnected() {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onAudioConnected', {});
+    }
+  }
+
+  public onTap(tap: { x: number, y: number }) {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onTap', tap);
+    }
+  }
+
+  public onDoubleTap(tap: { x: number, y: number }) {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onDoubleTap', tap);
+    }
+  }
+
+  public onBarCodeRead() {
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onBarCodeRead', {});
+    }
+  }
+
 
   public async getAvailablePictureSizes(): Promise<string[]> {
     return;
@@ -424,7 +466,7 @@ class CameraService {
   // }
 
 
-  async prepareAVRecorder(): Promise<void> {
+  public async prepareAVRecorder(): Promise<void> {
     Logger.info(TAG, 'prepareAVRecorder is called');
     this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
     this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
@@ -516,53 +558,6 @@ class CameraService {
           return;
         }
       });
-    }
-  }
-
-  public initProps(props: CameraProps): void {
-    this.setProps(props);
-    Logger.info(TAG, `CameraProps:${JSON.stringify(props)}`)
-    const {
-      torchMode,
-      zoom,
-      maxZoom,
-      zoomMode,
-      autoFocus,
-      autoFocusPointOfInterest,
-      flashMode:_flashMode,
-      type:_type,
-      exposure,
-    } = props;
-    const type = _type ?? 'back'
-    const flashMode = getFlashMode(_flashMode)
-    const focusMode = getFocusMode(autoFocus);
-
-    if (!isEmptyValue(type)) {
-      this.setCameraType(type);
-    }
-    if (!isEmptyValue(exposure)) {
-      this.setExposure(exposure);
-    }
-    if (!isEmptyValue(autoFocus)) {
-      this.setFocusModeFn(focusMode)
-    }
-    if (!isEmptyValue(autoFocusPointOfInterest)) {
-      this.setFocusPoint(autoFocusPointOfInterest)
-    }
-    if (!isEmptyValue(flashMode)) {
-      this.setFlashModeFn(flashMode)
-    }
-    if (!isEmptyValue(torchMode)) {
-      this.setTorchFn(torchMode)
-    }
-    if (!isEmptyValue(zoom)) {
-      this.setZoomRatioFn(zoom)
-    }
-    if (!isEmptyValue(maxZoom)) {
-      this.maxZoom = maxZoom;
-    }
-    if (!isEmptyValue(zoomMode)) {
-      this.zoomMode = zoomMode;
     }
   }
 
@@ -921,7 +916,7 @@ class CameraService {
 
 
   /*
- * 保存照片
+ * 保存照片到沙箱
  * */
   async savePhotoToSandbox(photoAccess: photoAccessHelper.PhotoAsset): Promise<void> {
     let photoFile = `${this.basicPath}/${this.outPathArray[0]}/${Date.now().toString()}.jpeg`;
@@ -1124,7 +1119,7 @@ class CameraService {
   /**
    * 曝光补偿
    */
-  setExposure(exposureBias: number): void {
+  public setExposure(exposureBias: number): void {
     Logger.debug(TAG, `setExposureBias value ${exposureBias}`);
     // 查询曝光补偿范围
     let exposure = exposureBias
@@ -1145,7 +1140,7 @@ class CameraService {
   /**
    * 对焦模式
    */
-  setFocusModeFn(focusMode: camera.FocusMode): void {
+  public setFocusModeFn(focusMode: camera.FocusMode): void {
     // 检测对焦模式是否支持
     Logger.info(TAG, `setFocusMode is called`);
     let isSupported = this.session?.isFocusModeSupported(focusMode);
@@ -1161,7 +1156,7 @@ class CameraService {
     this.session?.setFocusMode(focusMode);
   }
 
-  onZoom(zoom: number) {
+  private onZoom(zoom: number) {
     Logger.info(TAG, `emitDeviceEvent onZoom`)
     if (this.ctx) {
       this.ctx.rnInstance?.emitDeviceEvent('onZoom', {
@@ -1172,7 +1167,7 @@ class CameraService {
     }
   }
 
-  onError(message: string) {
+  private onError(message: string) {
     if (this.ctx) {
       this.ctx.rnInstance.emitDeviceEvent('onMountError', { message: message });
     }

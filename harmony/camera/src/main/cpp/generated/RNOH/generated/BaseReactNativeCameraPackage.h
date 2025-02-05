@@ -8,7 +8,7 @@
 #include "RNOH/Package.h"
 #include "RNOH/ArkTSTurboModule.h"
 #include "RNOH/generated/components/RTNCameraViewJSIBinder.h"
-#include "RNOH/generated/components/RTNCameraTurboModule.h"
+#include "RNOH/generated/turbo_modules/RTNCameraTurboModule.h"
 
 namespace rnoh {
 

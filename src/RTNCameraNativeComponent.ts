@@ -64,7 +64,7 @@ interface PropsType {
   useCamera2Api?: boolean;
   playSoundOnCapture?: boolean;
   playSoundOnRecord?: boolean;
-  videoStabilizationMode?: Int32;
+  videoStabilizationMode?: string;
   pictureSize?: string;
   rectOfInterest?: UnsafeMixed<{ x: Int32; y: Int32; width: Int32; height: Int32 }>;
   ///
