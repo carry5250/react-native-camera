@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { HostComponent, View, StyleSheet, DeviceEventEmitter } from 'react-native';
+import React, { useState } from 'react';
+import {
+  HostComponent,
+  View,
+  StyleSheet,
+  DeviceEventEmitter,
+  ActivityIndicator,
+  Text,
+} from 'react-native';
 import { NativeProps } from './RTNCameraNativeComponent';
 import {
   BarCodeReadEvent,
@@ -18,7 +25,6 @@ import {
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import NativeVisionCameraView from './RTNCameraNativeComponent';
 import codegenNativeCommands from 'react-native/Libraries/Utilities/codegenNativeCommands';
-import NativeEvent from './NativeCamera';
 
 type CameraCommands =
   | 'takePictureAsync'
@@ -159,6 +165,61 @@ export interface CameraProps extends NativeProps, EventType {
   pendingAuthorizationView?: JSX.Element;
 }
 
+const styles = StyleSheet.create({
+  authorizationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notAuthorizedText: {
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  box: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    zIndex: 999,
+  },
+});
+
+const defaultProps: Object = {
+  zoom: 1,
+  useNativeZoom: false,
+  maxZoom: 0,
+  ratio: '4:3',
+  focusDepth: 0,
+  type: 'back',
+  cameraId: '',
+  autoFocus: 'on',
+  flashMode: 'off',
+  exposure: -1,
+  whiteBalance: 'auto',
+  faceDetectionMode: 'fast',
+  permissionDialogTitle: '',
+  permissionDialogMessage: '',
+  androidCameraPermissionOptions: null,
+  androidRecordAudioPermissionOptions: null,
+  notAuthorizedView: (
+    <View style={styles.authorizationContainer}>
+      <Text>Camera not authorized</Text>
+    </View>
+  ),
+  pendingAuthorizationView: (
+    <View style={styles.authorizationContainer}>
+      <ActivityIndicator size="small" />
+    </View>
+  ),
+  captureAudio: true,
+  keepAudioSession: false,
+  useCamera2Api: false,
+  playSoundOnCapture: false,
+  playSoundOnRecord: false,
+  pictureSize: 'None',
+  videoStabilizationMode: 0,
+  mirrorVideo: false,
+};
+
 const Camera = forwardRef<CameraRefType, CameraProps>(
   (
     {
@@ -180,12 +241,12 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       onTextRecognized,
       notAuthorizedView,
       pendingAuthorizationView,
-      captureAudio,
       ...rest
     },
     ref,
   ) => {
     const CameraRef = useRef<React.ElementRef<CameraComponentType>>(null);
+
     const [cameraPermissionsStatus, setCameraPermissionsStatus] = useState<string>(
       CAMERA_STATUS.PENDING_AUTHORIZATION,
     );
@@ -193,40 +254,16 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION,
     );
 
-    useEffect(() => {
-      requestCameraPermissionsFn();
-      return () => {};
-    }, []);
-
-    useEffect(() => {
-      requestAudioPermissionsFn(captureAudio);
-    }, [captureAudio]);
-
-    const requestCameraPermissionsFn = async () => {
-      let cameraStatus = CAMERA_STATUS.PENDING_AUTHORIZATION;
-      const status = await NativeEvent?.requestDeviceCameraAuthorization();
-      if (status) {
-        cameraStatus = CAMERA_STATUS.READY;
-      } else {
-        cameraStatus = CAMERA_STATUS.NOT_AUTHORIZED;
+    DeviceEventEmitter.addListener('onStatusChange', (status: PermissionStatusType) => {
+      onStatusChange?.(status);
+      console.log('PermissionStatusType', JSON.stringify(status));
+      if (status.cameraStatus) {
+        setCameraPermissionsStatus(status.cameraStatus);
       }
-      setCameraPermissionsStatus(cameraStatus);
-      onStatusChange?.({ recordAudioPermissionStatus: audioPermissionsStatus, cameraStatus });
-    };
-
-    const requestAudioPermissionsFn = async (audio: boolean | undefined) => {
-      let recordAudioPermissionStatus = RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION;
-      if (audio) {
-        const status = await NativeEvent?.requestMicrophonePermission();
-        if (status) {
-          recordAudioPermissionStatus = RecordAudioPermissionStatusEnum.AUTHORIZED;
-        } else {
-          recordAudioPermissionStatus = RecordAudioPermissionStatusEnum.NOT_AUTHORIZED;
-        }
-        setAudioPermissionsStatus(recordAudioPermissionStatus);
-        onStatusChange?.({ recordAudioPermissionStatus, cameraStatus: cameraPermissionsStatus });
+      if (status.recordAudioPermissionStatus) {
+        setAudioPermissionsStatus(status.recordAudioPermissionStatus);
       }
-    };
+    });
 
     DeviceEventEmitter.addListener('onMountError', (error) => {
       onMountError?.(error);
@@ -425,19 +462,32 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
       getAvailablePictureSizes,
     }));
 
-    if (cameraPermissionsStatus === CAMERA_STATUS.NOT_AUTHORIZED && notAuthorizedView) {
-      return notAuthorizedView;
-    }
-    if (
-      cameraPermissionsStatus === CAMERA_STATUS.PENDING_AUTHORIZATION &&
-      pendingAuthorizationView
-    ) {
-      return pendingAuthorizationView;
-    }
+    const NotAuthorizedView =
+      cameraPermissionsStatus === CAMERA_STATUS.NOT_AUTHORIZED ? (
+        <View style={styles.box}>{notAuthorizedView ?? defaultProps.notAuthorizedView}</View>
+      ) : (
+        <></>
+      );
+
+    const PendingAuthorizationView =
+      cameraPermissionsStatus === CAMERA_STATUS.PENDING_AUTHORIZATION ? (
+        <View style={styles.box}>
+          {pendingAuthorizationView ?? defaultProps.pendingAuthorizationView}
+        </View>
+      ) : (
+        <></>
+      );
 
     return (
       <View style={style}>
-        <NativeVisionCameraView ref={CameraRef} style={StyleSheet.absoluteFill} {...rest} />
+        {NotAuthorizedView}
+        {PendingAuthorizationView}
+        <NativeVisionCameraView
+          ref={CameraRef}
+          style={StyleSheet.absoluteFill}
+          {...defaultProps}
+          {...rest}
+        />
       </View>
     );
   },

@@ -429,8 +429,10 @@ export struct RTNCameraView {
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
       Stack() {
-        this.CameraView();
-        this.FocusBuilder();
+        if (this.onShow) {
+          this.CameraView();
+          this.FocusBuilder();
+        }
       }
       .height('100%')
       .width('100%')

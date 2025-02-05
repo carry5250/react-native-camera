@@ -93,15 +93,13 @@ class CameraManager {
 
   }
 
-  getCameraIds(): Array<{ id: string, deviceType: string, type: number }> {
+  getCameraIds(): Array<{ id: string, type: number }> {
     const list = CameraService.getAvailableCameraDevices();
     return list.map(item => {
-      const { cameraPosition, cameraType } = item;
+      const { cameraId } = item;
       return {
-        ...item,
-        id: item.cameraId,
-        deviceType: cameraPosition === 0 ? 'back' : "front",
-        type: cameraType
+        id: cameraId === 'device/0' ? '0' : '1',
+        type: cameraId === 'device/0' ? 0 : 1,
       }
     })
   }
