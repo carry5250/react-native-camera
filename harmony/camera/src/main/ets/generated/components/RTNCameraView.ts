@@ -50,6 +50,8 @@ export namespace RTNCameraView {
     detectedImageInEvent?: boolean;
     video?: boolean;
     textRecognizedEnabled: boolean;
+    defaultVideoQuality?: string;
+    cameraViewDimensions?: unknown;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -176,6 +178,14 @@ export namespace RTNCameraView {
     }
     get textRecognizedEnabled(){
       return this.rawProps.textRecognizedEnabled ?? false
+    }
+    
+    get defaultVideoQuality() {
+      return this.rawProps.defaultVideoQuality;
+    }
+    
+    get cameraViewDimensions() {
+      return this.rawProps.cameraViewDimensions;
     }
     
   

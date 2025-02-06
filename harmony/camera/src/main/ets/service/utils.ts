@@ -1,16 +1,22 @@
 import { media } from "@kit.MediaKit";
 import { camera } from "@kit.CameraKit";
 
-const Resolution = {
-  '2160p': { "width": 3840, "height": 2160 },
-  '1080p': { "width": 1920, "height": 1080 },
-  '720p': { "width": 1920, "height": 1080 },
-  '480p': { "width": 640, "height": 480 },
-  '4:3': { "width": 1920, "height": 1080 }
-}
 
 export function getResolutionSize(resolution: string): { width: number, height: number } {
-  return Resolution[resolution];
+  switch (resolution) {
+    case '2160p':
+      return { "width": 3840, "height": 2160 }
+    case '1080p':
+      return { "width": 1920, "height": 1080 }
+    case '720p':
+      return { "width": 1280, "height": 720 }
+    case '480p':
+      return { "width": 640, "height": 480 }
+    case '4:3':
+      return { "width": 1920, "height": 1080 }
+    default:
+      return { "width": 1920, "height": 1080 }
+  }
 }
 
 /*
@@ -80,7 +86,8 @@ function gcd(a, b) {
 export const getPhotoProfileList = (list: Array<any>): Array<{
   format?: number,
   ratio: string,
-  size: { width: number, height: number }
+  size: { width: number, height: number },
+  pictureSizes: string
 }> => {
   return list.map(item => {
     const { width, height } = item.size;
@@ -88,7 +95,8 @@ export const getPhotoProfileList = (list: Array<any>): Array<{
     const simplifiedWidth = width / divisor;
     const simplifiedHeight = height / divisor;
     const ratio = `${simplifiedWidth}:${simplifiedHeight}`;
-    return { ...item, ratio }
+    const pictureSizes = `${width}x${height}`;
+    return { ...item, ratio, pictureSizes }
   })
 }
 
@@ -116,4 +124,19 @@ export const getDeviceOrientation = (orientation: number) => {
     deviceOrientation = 0;
   }
   return deviceOrientation;
+}
+
+export const getVideoStabilizationMode = (mode: string) => {
+  switch (mode) {
+    case 'auto':
+      return camera.VideoStabilizationMode.AUTO
+    case 'cinematic':
+      return camera.VideoStabilizationMode.HIGH
+    case 'off':
+      return camera.VideoStabilizationMode.OFF
+    case 'standard':
+      return camera.VideoStabilizationMode.MIDDLE
+    default:
+      return camera.VideoStabilizationMode.MIDDLE
+  }
 }

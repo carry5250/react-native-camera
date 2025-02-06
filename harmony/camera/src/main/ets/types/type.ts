@@ -210,6 +210,7 @@ export type CameraProps = {
   detectedImageInEvent?: boolean;
   video?: boolean;
   textRecognizedEnabled?: boolean;
+  defaultVideoQuality?:string,
 };
 
 export enum CameraType {

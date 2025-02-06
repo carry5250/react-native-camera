@@ -49,7 +49,9 @@ RTNCameraViewProps::RTNCameraViewProps(
     rectOfInterest(convertRawProp(context, rawProps, "rectOfInterest", sourceProps.rectOfInterest, {})),
     cameraId(convertRawProp(context, rawProps, "cameraId", sourceProps.cameraId, {})),
     detectedImageInEvent(convertRawProp(context, rawProps, "detectedImageInEvent", sourceProps.detectedImageInEvent, {false})),
-    video(convertRawProp(context, rawProps, "video", sourceProps.video, {false}))
+    video(convertRawProp(context, rawProps, "video", sourceProps.video, {false})),
+    defaultVideoQuality(convertRawProp(context, rawProps, "defaultVideoQuality", sourceProps.defaultVideoQuality, {})),
+    cameraViewDimensions(convertRawProp(context, rawProps, "cameraViewDimensions", sourceProps.cameraViewDimensions, {}))
       {}
 
 } // namespace react

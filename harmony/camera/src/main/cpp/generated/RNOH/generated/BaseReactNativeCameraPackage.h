@@ -9,7 +9,7 @@
 #include "RNOH/Package.h"
 #include "RNOH/generated/components/RTNCameraViewJSIBinder.h"
 #include "RNOH/generated/turbo_modules/FaceDetectorModule.h"
-#include "RNOH/generated/turbo_modules/RTNCameraTurboModule.h"
+
 namespace rnoh {
 
 class BaseReactNativeCameraPackageTurboModuleFactoryDelegate : public TurboModuleFactoryDelegate {
@@ -17,9 +17,6 @@ public:
     SharedTurboModule createTurboModule(Context ctx, const std::string &name) const override {
         if (name == "FaceDetectorModule") {
             return std::make_shared<FaceDetectorModule>(ctx, name);
-        }
-        if (name == "RTNCameraTurboModule") {
-            return std::make_shared<RTNCameraTurboModule>(ctx, name);
         }
         return nullptr;
     };
