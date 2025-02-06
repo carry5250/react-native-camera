@@ -49,6 +49,8 @@ export namespace RTNCameraView {
     cameraId?: string;
     detectedImageInEvent?: boolean;
     video?: boolean;
+    defaultVideoQuality?: string;
+    cameraViewDimensions?: unknown;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -172,6 +174,14 @@ export namespace RTNCameraView {
     
     get video() {
       return this.rawProps.video ?? false;
+    }
+    
+    get defaultVideoQuality() {
+      return this.rawProps.defaultVideoQuality;
+    }
+    
+    get cameraViewDimensions() {
+      return this.rawProps.cameraViewDimensions;
     }
     
   

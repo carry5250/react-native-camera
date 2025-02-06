@@ -71,6 +71,8 @@ interface PropsType {
   cameraId?: string;
   detectedImageInEvent?: boolean;
   video?: boolean;
+  defaultVideoQuality?: string;
+  cameraViewDimensions?: UnsafeMixed<{ width: Int32; height: Int32 }>;
 }
 
 export type RecordAudioPermissionStatus = WithDefault<
@@ -91,7 +93,7 @@ export const CameraCommands = codegenNativeCommands<CameraCommandsType>({
     'getCameraIdsAsync',
     'isRecording',
     'getSupportedPreviewFpsRange',
-    'getAvailablePictureSizes'
+    'getAvailablePictureSizes',
   ],
 });
 
@@ -111,9 +113,7 @@ export interface CameraCommandsType {
   getSupportedPreviewFpsRange: (
     viewRef: React.ElementRef<CameraComponentType>,
   ) => Promise<string[]>;
-  getAvailablePictureSizes: (
-    viewRef: React.ElementRef<CameraComponentType>,
-  ) => Promise<string[]>;
+  getAvailablePictureSizes: (viewRef: React.ElementRef<CameraComponentType>) => Promise<string[]>;
 }
 
 export type OnTouchEventData = Readonly<{

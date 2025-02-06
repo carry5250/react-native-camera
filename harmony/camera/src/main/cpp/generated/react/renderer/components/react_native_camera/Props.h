@@ -87,6 +87,8 @@ class RTNCameraViewProps final : public ViewProps {
   std::string cameraId{};
   bool detectedImageInEvent{false};
   bool video{false};
+  std::string defaultVideoQuality{};
+  folly::dynamic cameraViewDimensions{};
 };
 
 } // namespace react

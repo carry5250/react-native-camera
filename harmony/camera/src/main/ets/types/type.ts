@@ -209,6 +209,7 @@ export type CameraProps = {
   onMountError?: { error: { message: string } },
   detectedImageInEvent?: boolean;
   video?: boolean;
+  defaultVideoQuality?:string,
 };
 
 export enum CameraType {

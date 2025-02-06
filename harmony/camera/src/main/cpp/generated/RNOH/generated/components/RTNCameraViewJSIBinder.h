@@ -39,6 +39,8 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "cameraId", true);
         object.setProperty(rt, "detectedImageInEvent", true);
         object.setProperty(rt, "video", true);
+        object.setProperty(rt, "defaultVideoQuality", true);
+        object.setProperty(rt, "cameraViewDimensions", true);
         return object;
     }
 

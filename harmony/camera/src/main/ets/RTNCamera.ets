@@ -22,7 +22,7 @@ import CameraManager from './service/CameraManager';
 import { isEmptyValue } from './utils/utils';
 import { window } from '@kit.ArkUI';
 import { audio } from '@kit.AudioKit';
-import { getFlashMode, getFocusMode } from './service/utils';
+import { getFlashMode, getFocusMode, getResolutionSize, getVideoStabilizationMode } from './service/utils';
 import AVPlayerService from './service/AVPlayerService';
 
 
@@ -169,13 +169,18 @@ export struct RTNCameraView {
    */
   subscribeToLifecycleEvents() {
     this.ctx.rnInstance.subscribeToLifecycleEvents("FOREGROUND", () => {
+      if (this.props.type === 'back') {
+        this.cameraDeviceIndex = 0
+      } else {
+        this.cameraDeviceIndex = 1
+      }
       CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,
         cameraProps: this.props,
         initSuccessCallBack: () => {
           this.isInitSuccess = true;
-          this.initProps(this.props)
+          this.updateProps(this.props)
           this.onCameraReady()
         }
       }
@@ -195,34 +200,32 @@ export struct RTNCameraView {
       this.ctx.componentCommandReceiver.registerCommandCallback(
         this.tag,
         (command: string, args: (string | number | boolean | object)[]) => {
-          Logger.info(TAG, `registerCommandCallback: option,  ${JSON.stringify(args)}`)
-          Logger.info(TAG, `registerCommandCallback: command,  ${JSON.stringify(command)}`)
           switch (command) {
             case Constants.TACK_PHOTO:
               let options = args[0] as TakePictureOptions
               this.takePhoto(options);
               break;
             case "getSupportedRatiosAsync":
-              CameraService.getSupportedRatiosAsync()
+              CameraManager.getSupportedRatiosAsync()
               break;
             case 'recordAsync':
               let recordAsyncOptions = args[0] as RecordOptions
-              CameraService.recordAsync(recordAsyncOptions)
+              CameraManager.recordAsync(recordAsyncOptions)
               break;
             case 'stopRecording':
-              CameraService.stopRecording()
+              CameraManager.stopRecording();
               break;
             case 'pausePreview':
-              CameraService.pausePreview()
+              CameraManager.pausePreview()
               break;
             case 'resumePreview':
-              CameraService.resumePreview()
+              CameraManager.resumePreview()
               break;
             case 'getSupportedRatiosAsync':
-              CameraService.getSupportedRatiosAsync()
+              CameraManager.getSupportedRatiosAsync()
               break;
             case 'checkIfVideoIsValid':
-              CameraService.checkIfVideoIsValid()
+              CameraManager.checkIfVideoIsValid()
               break;
             case Constants.REQUEST_DEVICE_CAMERA_AUTHOR:
               this.requestDeviceCameraAuthorization()
@@ -231,17 +234,19 @@ export struct RTNCameraView {
               this.checkDeviceCameraAuthorizationStatus();
               break;
             case 'getSupportedPreviewFpsRange':
-              CameraService.getSupportedPreviewFpsRange()
+              CameraManager.getSupportedPreviewFpsRange()
               break;
             case 'getAvailablePictureSizes':
-              CameraService.getAvailablePictureSizes()
+              CameraManager.getAvailablePictureSizes()
               break;
             case 'refreshAuthorizationStatus':
               CameraManager.refreshAuthorizationStatus();
               break;
-
             case 'getCameraIdsAsync':
               this.getCameraIdsAsync();
+              break;
+            case 'isRecording':
+              CameraManager.isRecording();
               break;
           }
         });
@@ -302,45 +307,11 @@ export struct RTNCameraView {
         cameraProps: this.props,
         initSuccessCallBack: () => {
           this.isInitSuccess = true;
-          this.initProps(this.props)
+          this.updateProps(this.props)
           this.onCameraReady()
         }
       }
       );
-    }
-  }
-
-  initProps(props: CameraProps): void {
-    Logger.info(TAG, `CameraProps:${JSON.stringify(props)}`)
-    const type = props.type ?? 'back'
-    const exposure = props.exposure;
-    const autoFocusPointOfInterest = props.autoFocusPointOfInterest
-    const torchMode = props.torchMode
-    const zoom = props.zoom
-    const flashMode = getFlashMode(props.flashMode)
-    const focusMode = getFocusMode(props.autoFocus);
-    CameraService.setProps(props)
-
-    if (!isEmptyValue(type)) {
-      CameraService.setCameraType(type);
-    }
-    if (!isEmptyValue(exposure)) {
-      CameraService.setExposure(exposure);
-    }
-    if (!isEmptyValue(focusMode)) {
-      CameraService.setFocusModeFn(focusMode)
-    }
-    if (!isEmptyValue(autoFocusPointOfInterest)) {
-      CameraService.setFocusPoint(autoFocusPointOfInterest)
-    }
-    if (!isEmptyValue(flashMode)) {
-      CameraService.setFlashModeFn(flashMode)
-    }
-    if (!isEmptyValue(torchMode)) {
-      CameraService.setTorchFn(torchMode)
-    }
-    if (!isEmptyValue(zoom)) {
-      CameraService.setZoomRatioFn(zoom)
     }
   }
 
@@ -352,14 +323,24 @@ export struct RTNCameraView {
     const autoFocusPointOfInterest = props.autoFocusPointOfInterest
     const torchMode = props.torchMode
     const zoom = props.zoom
-    const flashMode = getFlashMode(props.flashMode)
+    const flashMode = getFlashMode(props.flashMode);
     const focusMode = getFocusMode(props.autoFocus);
+    const videoStabilizationMode = getVideoStabilizationMode(props.videoStabilizationMode);
+    const resolutionSize = getResolutionSize(props.defaultVideoQuality)
 
+    CameraService.setPlaySoundOnRecord(props.playSoundOnRecord)
+    CameraService.setPictureSize(props.pictureSize)
+    if (resolutionSize) {
+      CameraService.setResolutionSize(resolutionSize)
+    }
     if (!isEmptyValue(type)) {
-      CameraService.setCameraType(type);
+      CameraService.setCameraTypeFn(type);
+    }
+    if (!isEmptyValue(videoStabilizationMode)) {
+      CameraService.setVideoStabilizationFn(videoStabilizationMode);
     }
     if (!isEmptyValue(exposure)) {
-      CameraService.setExposure(exposure);
+      CameraService.setExposureFn(exposure);
     }
     if (!isEmptyValue(focusMode)) {
       CameraService.setFocusModeFn(focusMode)
