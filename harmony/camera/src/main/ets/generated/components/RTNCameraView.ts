@@ -49,6 +49,7 @@ export namespace RTNCameraView {
     cameraId?: string;
     detectedImageInEvent?: boolean;
     video?: boolean;
+    textRecognizedEnabled: boolean;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -172,6 +173,9 @@ export namespace RTNCameraView {
     
     get video() {
       return this.rawProps.video ?? false;
+    }
+    get textRecognizedEnabled(){
+      return this.rawProps.textRecognizedEnabled ?? false
     }
     
   

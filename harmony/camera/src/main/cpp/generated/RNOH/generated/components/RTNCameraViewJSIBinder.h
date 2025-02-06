@@ -39,6 +39,7 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "cameraId", true);
         object.setProperty(rt, "detectedImageInEvent", true);
         object.setProperty(rt, "video", true);
+        object.setProperty(rt, "textRecognizedEnabled", true);
         return object;
     }
 

@@ -23,7 +23,7 @@ import {
 } from '../types';
 import { isEmptyValue } from '../utils/utils';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
-import { RecordOptions, TakePictureOptions } from '../types';
+import { RecordOptions, TakePictureOptions,Face } from '../types';
 import {
   getDeviceOrientation,
   getFlashMode,
@@ -34,8 +34,10 @@ import {
   getResolutionSize,
   getVideoCodec
 } from './utils';
-
-
+import { image } from '@kit.ImageKit';
+interface MetadataObjectWithId extends camera.MetadataObject {
+  objectId?:number
+}
 const TAG: string = 'CameraService';
 
 export class SliderValue {
@@ -49,7 +51,9 @@ interface SessionOptionType {
   cameraInput: camera.CameraInput,
   previewOutput: camera.PreviewOutput,
   photoOutput: camera.PhotoOutput | undefined,
-  videoOutput: camera.VideoOutput | undefined
+  videoOutput: camera.VideoOutput | undefined,
+  metaDataOutput: camera.MetadataOutput | undefined,
+  textPreviewOutput: camera.PreviewOutput | undefined
 }
 
 declare function getContext(component?: Object): Context;
@@ -85,6 +89,13 @@ class CameraService {
     recordAudioPermissionStatus: RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION
   }
   private ratioList: string[] = ["16:9", "4:3"];
+
+  private metadataOutput:camera.MetadataOutput | undefined = undefined
+  private faceDetectorEnable: boolean = false
+  private trackingEnable: boolean = false
+  private textRecognizedEnabled: boolean = false
+  private isTextRecognizing:boolean = false
+  private textPreviewOutput: camera.PreviewOutput | undefined = undefined
 
 
   private photoProfileObj: camera.Profile = {
@@ -214,6 +225,18 @@ class CameraService {
         Logger.error(TAG, 'Failed to create the preview stream.');
         return;
       }
+      // Create textPreviewOutput
+      if (this.textRecognizedEnabled) {
+        let size: image.Size = {
+          width: previewProfile.size.height,
+          height: previewProfile.size.width
+        }
+        let receiver: image.ImageReceiver = image.createImageReceiver(size, image.ImageFormat.JPEG, 8);
+        let imageReceiverSurfaceId: string = await receiver.getReceivingSurfaceId();
+        this.textPreviewOutput = this.createPreviewOutputFn(this.cameraManager,this.previewProfileObj,imageReceiverSurfaceId)
+        this.onTextPrewImageArrival(receiver)
+      }
+
       // Monitor preview events.
       this.previewOutputCallBack(this.previewOutput);
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
@@ -229,6 +252,7 @@ class CameraService {
           Logger.error(TAG, 'Failed to create the photo stream.');
           return;
         }
+
       } else if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
         let videoProfile = this.getVideoProfile(cameraOutputCapability);
         if (videoProfile === undefined) {
@@ -266,13 +290,21 @@ class CameraService {
       this.onCameraStatusChange(this.cameraManager);
       // Monitor error events from CameraInput.
       this.onCameraInputChange(this.cameraInput, this.curCameraDevice);
+
+      //CreatMetaDataOutput
+      if(this.faceDetectorEnable){
+        this.metadataOutput = this.createMetadataOutputFn(this.cameraManager,cameraOutputCapability);
+        this.onMetaDataChange(this.metadataOutput);
+      }
       // Conversation process.
       await this.sessionFlowFn({
         cameraManager: this.cameraManager,
         cameraInput: this.cameraInput,
         previewOutput: this.previewOutput,
         photoOutput: this.photoOutput,
-        videoOutput: this.videoOutput
+        videoOutput: this.videoOutput,
+        metaDataOutput: this.metadataOutput,
+        textPreviewOutput: this.textPreviewOutput
       });
       initSuccessCallBack?.();
     } catch (error) {
@@ -382,6 +414,18 @@ class CameraService {
   public onBarCodeRead() {
     if (this.ctx) {
       this.ctx.rnInstance.emitDeviceEvent('onBarCodeRead', {});
+    }
+  }
+
+  public onFaceDetector(faces:Array<Face>){
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onFacesDetected',faces);
+    }
+  }
+
+  public onFaceDetectorError(error:BusinessError){
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onFaceDetectionError',error);
     }
   }
 
@@ -714,6 +758,32 @@ class CameraService {
     }
   }
 
+  /**
+   * 设置人脸追踪
+   */
+  setTrackingEnable(enable: boolean): void{
+    if (enable == this.faceDetectorEnable){
+      return
+    }
+    this.faceDetectorEnable = enable
+    if (this.cameraManager != undefined && this.session != undefined) {
+      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
+    }
+
+  }
+  /**
+   * 设置文字识别
+   */
+  setTextRecognizedEnabled(enable: boolean): void{
+    if (enable == this.textRecognizedEnabled){
+      return
+    }
+    this.textRecognizedEnabled = enable
+    if (this.cameraManager != undefined && this.session != undefined) {
+      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
+    }
+
+  }
 
   /**
    * 释放会话及其相关参数
@@ -738,6 +808,27 @@ class CameraService {
       this.onError(log)
     } finally {
       this.photoOutput = undefined;
+    }
+
+    try {
+      await this.metadataOutput?.release();
+    } catch (error) {
+      let err = error as BusinessError;
+      const log = `metadataOutput release fail: error: ${JSON.stringify(err)}`
+      Logger.error(TAG, log);
+      this.onError(log)
+    } finally {
+      this.metadataOutput = undefined;
+    }
+    try {
+      await this.textPreviewOutput?.release();
+    } catch (error) {
+      let err = error as BusinessError;
+      const log = `textPreviewOutput release fail: error: ${JSON.stringify(err)}`
+      Logger.error(TAG, log);
+      this.onError(log)
+    } finally {
+      this.textPreviewOutput = undefined;
     }
 
     try {
@@ -826,6 +917,18 @@ class CameraService {
     return photoOutput;
   }
 
+  createMetadataOutputFn(cameraManager: camera.CameraManager, cameraOutputCapability: camera.CameraOutputCapability): camera.MetadataOutput | undefined {
+    let metadataObjectTypes: Array<camera.MetadataObjectType> = cameraOutputCapability.supportedMetadataObjectTypes;
+    let metadataOutput: camera.MetadataOutput | undefined = undefined;
+    try {
+      metadataOutput = cameraManager.createMetadataOutput(metadataObjectTypes);
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG,`Failed to createMetadataOutput, error code: ${err.code}`);
+    }
+    return metadataOutput;
+  }
+
   /**
    * 创建cameraInput输出对象
    */
@@ -864,7 +967,7 @@ class CameraService {
    */
   async sessionFlowFn(options: SessionOptionType
   ): Promise<void> {
-    const { cameraManager, cameraInput, previewOutput, photoOutput, videoOutput } = options
+    const { cameraManager, cameraInput, previewOutput, photoOutput, videoOutput, metaDataOutput,textPreviewOutput } = options
     try {
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
         this.session = cameraManager.createSession(this.curSceneMode) as camera.PhotoSession;
@@ -878,6 +981,13 @@ class CameraService {
       this.session.beginConfig();
       this.session.addInput(cameraInput);
       this.session.addOutput(previewOutput);
+      if (textPreviewOutput){
+        try {
+          this.session.addOutput(textPreviewOutput);
+        } catch (e) {
+          Logger.error(JSON.stringify(e))
+        }
+      }
       if (this.curSceneMode === camera.SceneMode.NORMAL_PHOTO) {
         if (photoOutput === undefined) {
           return;
@@ -890,6 +1000,10 @@ class CameraService {
         }
         this.session.addOutput(videoOutput);
       }
+      if (metaDataOutput){
+        this.session.addOutput(metaDataOutput);
+      }
+
       await this.session.commitConfig();
       if (this.curSceneMode === camera.SceneMode.NORMAL_VIDEO) {
         this.setVideoStabilizationFn(this.session as camera.VideoSession, camera.VideoStabilizationMode.MIDDLE);
@@ -1048,6 +1162,82 @@ class CameraService {
     }
   }
 
+  onMetaDataChange(metaDataOutput: camera.MetadataOutput):void {
+    Logger.info(TAG, `onMetaDataChange is called`);
+    try {
+      metaDataOutput.on('metadataObjectsAvailable', (err: BusinessError, metadataObjectArr: Array<camera.MetadataObject>) => {
+        if (err !== undefined && err.code !== 0) {
+          return;
+        }
+        // Logger.info(TAG,JSON.stringify(metadataObjectArr));
+        let faces = metadataObjectArr.map((metadataObject)=>{
+          let metadataObjectWithId:MetadataObjectWithId = metadataObject as MetadataObjectWithId
+          let boundBox = metadataObjectWithId.boundingBox
+          let face:Face = {
+            faceID:metadataObjectWithId.objectId,
+            bounds:{
+              size:{
+                width:boundBox.width,
+                height:boundBox.height
+              },
+              origin:{
+                x:boundBox.topLeftX,
+                y:boundBox.topLeftY
+              }
+            }
+          }
+          return face
+        })
+        this.onFaceDetector(faces)
+      });
+      metaDataOutput.on('error', (metadataOutputError: BusinessError) => {
+        Logger.error(TAG,`Metadata output error code: ${metadataOutputError.code}`);
+        this.onFaceDetectorError(metadataOutputError);
+      });
+    } catch (error) {
+      Logger.error(TAG, 'metaDataOutput error');
+      this.onFaceDetectorError(error);
+    }
+  }
+
+  onTextPrewImageArrival(receiver: image.ImageReceiver): void {
+    receiver.on('imageArrival', () => {
+      receiver.readNextImage((err: BusinessError, nextImage: image.Image) => {
+        Logger.info(TAG, 'Receiver.readNextImage success');
+        if (err || nextImage === undefined) {
+          Logger.error(TAG, `receiver.readNextImage failed. Code: ${err.code}`);
+          return;
+        }
+        nextImage.getComponent(image.ComponentType.JPEG, (err: BusinessError, imgComponent: image.Component) => {
+          if (err || nextImage === undefined) {
+            Logger.error(TAG, 'Failed to getComponent by nextImage.');
+            return;
+          }
+          let width = 1920;
+          let height = 1080;
+          if (!this.isTextRecognizing && imgComponent && imgComponent.byteBuffer as ArrayBuffer) {
+            // Image decoding preview buffer.
+            // Note: The camera and camera preview are not always in the same orientation.
+            let stride = imgComponent.rowStride;
+            Logger.info(TAG, `getComponent stride:${stride}, width: ${width}`);
+            if (stride == width) {
+              // this.decodeImageBuffer(nextImage, imgComponent.byteBuffer, CAMERA_1920, CAMERA_1080);
+            } else {
+              // NV21（YUV_420_SP）
+              const dstBufferSize = width * height * 1.5;
+              const dstArr = new Uint8Array(dstBufferSize);
+              Logger.error(TAG, 'dstBufferSize: ' + dstBufferSize);
+              for (let j = 0; j < height * 1.5; j++) {
+                const srcBuf = new Uint8Array(imgComponent.byteBuffer, j * stride, width);
+                dstArr.set(srcBuf, j * width);
+              }
+              // this.decodeImageBuffer(nextImage, dstArr.buffer as ArrayBuffer, CAMERA_1920, CAMERA_1080);
+            }
+          }
+        })
+      })
+    })
+  }
 
   /**
    * 闪关灯

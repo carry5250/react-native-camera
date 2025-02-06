@@ -354,6 +354,8 @@ export struct RTNCameraView {
     const zoom = props.zoom
     const flashMode = getFlashMode(props.flashMode)
     const focusMode = getFocusMode(props.autoFocus);
+    const trackingEnabled = props.trackingEnabled;
+    const textRecognizedEnabled = props.textRecognizedEnabled;
 
     if (!isEmptyValue(type)) {
       CameraService.setCameraType(type);
@@ -375,6 +377,12 @@ export struct RTNCameraView {
     }
     if (!isEmptyValue(zoom)) {
       CameraService.setZoomRatioFn(zoom)
+    }
+    if (!isEmptyValue(trackingEnabled)){
+      CameraService.setTrackingEnable(trackingEnabled)
+    }
+    if (!isEmptyValue(textRecognizedEnabled)){
+      CameraService.setTextRecognizedEnabled(textRecognizedEnabled);
     }
   }
 

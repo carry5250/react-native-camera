@@ -487,6 +487,7 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
           style={StyleSheet.absoluteFill}
           {...defaultProps}
           {...rest}
+          trackingEnabled={onFacesDetected ? true: false}
         />
       </View>
     );
