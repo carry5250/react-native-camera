@@ -24,7 +24,7 @@ import {
   ZoomMode
 } from '../types';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
-import { getDeviceOrientation, getOrientation, getPhotoProfileList, getPhotoQuality } from './utils';
+import { getDeviceOrientation, getOrientation, getPhotoProfileList, getPhotoQuality, getResolutionSize } from './utils';
 
 
 const TAG: string = 'CameraService';
@@ -77,6 +77,7 @@ class CameraService {
   private ratioList: string[] = ["16:9", "4:3"];
   private playSoundOnRecord: boolean = true;
   private pictureSizesList: string[] = ['640x480'];
+  private allVideoProfile: camera.VideoProfile[];
 
 
   private photoProfileObj: camera.Profile = {
@@ -321,8 +322,8 @@ class CameraService {
     this.photoAsset.uri = '';
     this.photoCaptureSetting = {
       ...this.photoCaptureSetting,
-      quality: getPhotoQuality(options.quality),
-      rotation: getOrientation(options.rotation)
+      quality: getPhotoQuality(options.quality), //质量
+      rotation: getOrientation(options.rotation)//角度
     }
     await this.photoOutput?.capture(this.photoCaptureSetting);
     this.photoAsset.width = this.photoProfileObj.size.width;
@@ -449,8 +450,35 @@ class CameraService {
   /*
    *录制配置
    * */
-  public async prepareAVRecorderConfig() {
-    Logger.info(TAG, 'prepareAVRecorder is called');
+  public async prepareAVRecorderConfig(options?: RecordOptions) {
+    Logger.info(TAG, `prepareAVRecorderConfig:${JSON.stringify(options)}`);
+    let quality;
+    let orientation;
+    let fps = options?.fps ?? 30;
+    if (!options || typeof options !== 'object') {
+      options = {};
+    } else if (typeof options.quality === 'string') {
+      quality = getResolutionSize(options.quality);
+      this.setResolutionSize(quality)
+    }
+    if (options?.orientation) {
+      if (typeof options.orientation === 'string') {
+        orientation = getOrientation(options.orientation)
+      }
+    }
+    const { captureAudio } = this.props;
+    if (!captureAudio) {
+      options.mute = true;
+    }
+    let { min:minFps, max:maxFps } = this.videoProfileObj.frameRateRange;
+    if (fps > maxFps) {
+      fps = maxFps;
+      this.onError('The fps exceeds the maximum value.')
+    } else if (fps < minFps) {
+      fps = minFps;
+      this.onError('The fps is lower than the minimum value.')
+    }
+
     this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
     this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
     let videoConfig: media.AVRecorderConfig = {
@@ -466,10 +494,10 @@ class CameraService {
         videoCodec: media.CodecMimeType.VIDEO_AVC,
         videoFrameWidth: this.videoProfileObj.size.width,
         videoFrameHeight: this.videoProfileObj.size.height,
-        videoFrameRate: this.videoProfileObj.frameRateRange.max
+        videoFrameRate: fps
       },
       url: `fd://${this.videoFile.fd.toString()}`,
-      rotation: this.curCameraDevice?.cameraOrientation
+      rotation: orientation ?? this.curCameraDevice?.cameraOrientation
     };
     return videoConfig;
   }
@@ -488,16 +516,15 @@ class CameraService {
  * 开始录制
  * */
   public async recordAsync(options?: RecordOptions): Promise<RecordResponse> {
-    if (this.avRecorder.state === 'stopped' || this.avRecorder.state === 'idle') {
-      try {
-        // 重新进入 prepared 状态
-        let videoConfig = await this.prepareAVRecorderConfig();
-        await this.avRecorder.prepare(videoConfig);
-        await this.avRecorder.getInputSurface();
-      } catch (error) {
-        Logger.error(TAG, `restart recording error: ${JSON.stringify(error)}`);
-      }
+    try {
+      // 重新进入 prepared 状态
+      let videoConfig = await this.prepareAVRecorderConfig(options);
+      await this.avRecorder.prepare(videoConfig);
+      await this.avRecorder.getInputSurface();
+    } catch (error) {
+      Logger.error(TAG, `restart recording error: ${JSON.stringify(error)}`);
     }
+
 
     try {
       // 开始录制
@@ -637,6 +664,7 @@ class CameraService {
 
   getVideoProfile(cameraOutputCapability: camera.CameraOutputCapability): camera.VideoProfile | undefined {
     let videoProfiles = cameraOutputCapability.videoProfiles;
+    this.allVideoProfile = videoProfiles
     if (videoProfiles.length < 1) {
       return undefined;
     }
@@ -740,7 +768,6 @@ class CameraService {
     } catch (error) {
       let err = error as BusinessError;
       Logger.error(TAG, `previewOutput release fail: error: ${JSON.stringify(err)}`);
-      this.onError(`previewOutput release fail: error: ${JSON.stringify(err)}`)
     } finally {
       this.previewOutput = undefined;
     }
@@ -748,13 +775,27 @@ class CameraService {
       await this.photoOutput?.release();
     } catch (error) {
       let err = error as BusinessError;
-      const log = `photoOutput release fail: error: ${JSON.stringify(err)}`
-      Logger.error(TAG, log);
-      this.onError(log)
+      Logger.error(TAG, `photoOutput release fail: error: ${JSON.stringify(err)}`);
     } finally {
       this.photoOutput = undefined;
     }
+    try {
+      await this.avRecorder?.release();
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG, `avRecorder release fail: error: ${JSON.stringify(err)}`);
+    } finally {
+      this.avRecorder = undefined;
+    }
 
+    try {
+      await this.videoOutput?.release();
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG, `videoOutput release fail: error: ${JSON.stringify(err)}`);
+    } finally {
+      this.videoOutput = undefined;
+    }
     try {
       await this.session?.release();
     } catch (error) {
@@ -1092,6 +1133,9 @@ class CameraService {
    */
   setFocusPoint(point: camera.Point): void {
     // 设置焦点
+    if (!point) {
+      return
+    }
     this.session?.setFocusPoint(point);
     Logger.info(TAG, `setFocusPoint success point: ${JSON.stringify(point)}`);
     // 获取当前的焦点
