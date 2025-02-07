@@ -1,65 +1,109 @@
 import { image } from '@kit.ImageKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
-import { BusinessError } from '@kit.BasicServicesKit';
-import { fileIo } from '@kit.CoreFileKit';
-import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { buffer } from '@kit.ArkTS';
-import fs from '@ohos.file.fs';
 import { textRecognition } from '@kit.CoreVisionKit';
+import { TrackedTextFeature, TrackedTextFeatureRecursive } from '../types'
+import Logger from '../utils/Logger'
+import { BusinessError } from '@kit.BasicServicesKit';
+const TAG: string = 'FaceDetectorManager';
 export default class FaceDetectorManager {
-  infoLog(info:string):void {
-    hilog.info(0x0000,'FaceDetectorManager',info)
-  }
 
-
-  private openPhoto(): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      let photoPicker: photoAccessHelper.PhotoViewPicker = new photoAccessHelper.PhotoViewPicker();
-      photoPicker.select({
-        MIMEType: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE, maxSelectNumber: 1
-      }).then(res => {
-        resolve(res.photoUris[0])
-      }).catch((err: BusinessError) => {
-        hilog.error(0x0000, 'objectDetectSample', `Failed to get photo image uri. code：${err.code}，message：${err.message}`);
-        reject('')
+  static async detectText(buffer:ArrayBuffer,size:image.Size): Promise<TrackedTextFeature[]> {
+    let pixelMapInstance:image.PixelMap| undefined = undefined
+    try {
+      pixelMapInstance = await image.createPixelMap(buffer, {
+        size: {
+          height: size.height,
+          width: size.width
+        },
+        srcPixelFormat: image.PixelMapFormat.NV21
       })
-    })
-  }
-  private async getFileBase64(uri: string) {
-    let file = fs.openSync(uri, fs.OpenMode.READ_ONLY);
-    let arrayBuffer = new ArrayBuffer(100 * 1024 * 1024);
-    let readLen = fs.readSync(file.fd, arrayBuffer);
-    return buffer.from(arrayBuffer, 0, readLen).toString('base64');
-  }
-  async detectText(uri:string): Promise<string> {
-    let testUri = await this.openPhoto()
-    if (testUri === undefined) {
-      hilog.error(0x0000, 'objectDetectSample', "Failed to defined uri.");
-      return Promise.reject('none img')
+    } catch (error) {
+      Logger.error(TAG, `create image faild:${JSON.stringify(error)}`);
+      return Promise.reject(error)
     }
-    let imageSource: image.ImageSource | undefined = undefined;
-    let fileSource = await fileIo.open(testUri, fileIo.OpenMode.READ_ONLY);
-    imageSource = image.createImageSource(fileSource.fd);
-    let img = await imageSource.createPixelMap();
-    let imgInfo = await img.getImageInfo()
-    this.infoLog(JSON.stringify(imgInfo))
+    if (!canIUse("SystemCapability.AI.OCR.TextRecognition")) {
+      return Promise.reject('device not support FaceDetector')
+    }
 
-    // let base64 = await this.getFileBase64(testUri)
     let visionInfo: textRecognition.VisionInfo = {
-      pixelMap: img,
+      pixelMap: pixelMapInstance,
     };
     let textConfiguration: textRecognition.TextRecognitionConfiguration = {
       isDirectionDetectionSupported: true
     };
-    let recognitionString: string = '';
-    let TextRecognitionResult =  await textRecognition.recognizeText(visionInfo, textConfiguration)
-    if (TextRecognitionResult.value === '') {
-      recognitionString = ''
-    } else {
-      recognitionString = TextRecognitionResult.value;
-    }
-    this.infoLog(JSON.stringify(TextRecognitionResult))
-    return Promise.resolve(JSON.stringify(TextRecognitionResult))
+
+    await textRecognition.recognizeText(visionInfo, textConfiguration).then((TextRecognitionResult) => {
+      if (TextRecognitionResult.value === '') {
+        return Promise.resolve([])
+      } else {
+        let textFeatures = this.convertTextRecognitionResultToTrackedTextFeatures(TextRecognitionResult)
+        pixelMapInstance.release();
+        return Promise.resolve(textFeatures)
+      }
+    }).catch((e)=>{
+      Logger.error(TAG,`detect faild：${JSON.stringify(e)}`)
+      pixelMapInstance.release();
+      return Promise.reject(JSON.stringify(e))
+    })
+
+  }
+  static  convertTextRecognitionResultToTrackedTextFeatures(
+    result: textRecognition.TextRecognitionResult
+  ): TrackedTextFeature[] {
+    const features: TrackedTextFeature[] = [];
+
+    result.blocks.forEach(block => {
+      const blockFeature: TrackedTextFeature = {
+        type: 'block',
+        bounds: {
+          // 注意：这里我们没有 Size 和 Point 的泛型类型，所以默认使用 number 类型
+          size: { width: 0, height: 0 },
+          origin: { x: 0, y: 0 }
+        },
+        value: block.value,
+        components: [],
+      };
+
+      block.lines.forEach(line => {
+        const lineFeature: TrackedTextFeatureRecursive = {
+          type: 'line',
+          bounds: {
+            size: { width: 0, height: 0 },
+            origin: { x: 0, y: 0 }
+          },
+          value: line.value,
+          components: [],
+        };
+
+        // 设置 lineFeature 的 cornerPoints（如果需要的话，这里简化为不设置）
+        // lineFeature.bounds.origin 和 lineFeature.bounds.size 应该根据 line.cornerPoints 来计算
+
+        line.words.forEach(word => {
+          const wordFeature: TrackedTextFeatureRecursive = {
+            type: 'element', // 或者根据需求使用其他类型
+            bounds: {
+              size: { width: 0, height: 0 },
+              origin: {
+                x: word.cornerPoints[0].x,
+                y: word.cornerPoints[0].y,
+              }
+            },
+            value: word.value,
+            components: [], // 如果没有子组件，则保持为空
+          };
+
+          // 可以根据 word.cornerPoints 进一步细化 wordFeature 的 bounds
+
+          lineFeature.components!.push(wordFeature);
+        });
+
+        blockFeature.components!.push(lineFeature);
+      });
+
+      features.push(blockFeature);
+    });
+    Logger.info(TAG,`TextRecognitionResult:${JSON.stringify(result)}`)
+    Logger.info(TAG,`features:${JSON.stringify(features)}`)
+    return features;
   }
 
 }

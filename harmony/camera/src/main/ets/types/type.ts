@@ -211,6 +211,8 @@ export type CameraProps = {
   video?: boolean;
   textRecognizedEnabled?: boolean;
   defaultVideoQuality?:string,
+  faceDetectionEnabled?: boolean;
+  barcodeDetectionEnabled?: boolean;
 };
 
 export enum CameraType {

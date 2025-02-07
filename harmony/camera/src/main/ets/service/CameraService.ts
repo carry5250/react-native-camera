@@ -34,6 +34,9 @@ interface MetadataObjectWithId extends camera.MetadataObject {
 
 import { getDeviceOrientation, getOrientation, getPhotoProfileList, getPhotoQuality } from './utils';
 
+import TextDetectorManager from './TextDetectorManager'
+import { detectBarcode, scanBarcode, scanCore } from '@kit.ScanKit';
+
 
 const TAG: string = 'CameraService';
 
@@ -90,8 +93,8 @@ class CameraService {
 
   private metadataOutput:camera.MetadataOutput | undefined = undefined
   private faceDetectorEnable: boolean = false
-  private trackingEnable: boolean = false
   private textRecognizedEnabled: boolean = false
+  private barcodeDetectionEnabled: boolean = false
   private isTextRecognizing:boolean = false
   private textPreviewOutput: camera.PreviewOutput | undefined = undefined
 
@@ -229,13 +232,13 @@ class CameraService {
       // Create textPreviewOutput
       if (this.textRecognizedEnabled) {
         let size: image.Size = {
-          width: previewProfile.size.height,
-          height: previewProfile.size.width
+          width: previewProfile.size.width,
+          height: previewProfile.size.height
         }
         let receiver: image.ImageReceiver = image.createImageReceiver(size, image.ImageFormat.JPEG, 8);
         let imageReceiverSurfaceId: string = await receiver.getReceivingSurfaceId();
         this.textPreviewOutput = this.createPreviewOutputFn(this.cameraManager,this.previewProfileObj,imageReceiverSurfaceId)
-        this.onTextPrewImageArrival(receiver)
+        this.onTextPrevImageArrival(receiver,size)
       }
 
       // Monitor preview events.
@@ -782,7 +785,7 @@ class CameraService {
   /**
    * 设置人脸追踪
    */
-  setTrackingEnable(enable: boolean): void{
+  setFaceDetectionEnableEnable(enable: boolean): void{
     if (enable == this.faceDetectorEnable){
       return
     }
@@ -805,7 +808,19 @@ class CameraService {
     }
 
   }
+  /**
+   * 设置条码识别
+   */
+  setBarcodeDetectionEnabled(enable: boolean): void{
+    if (enable == this.barcodeDetectionEnabled){
+      return
+    }
+    this.barcodeDetectionEnabled = enable
+    if (this.cameraManager != undefined && this.session != undefined) {
+      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
+    }
 
+  }
   /**
    * 释放会话及其相关参数
    */
@@ -1222,10 +1237,9 @@ class CameraService {
     }
   }
 
-  onTextPrewImageArrival(receiver: image.ImageReceiver): void {
+  onTextPrevImageArrival(receiver: image.ImageReceiver,size:image.Size): void {
     receiver.on('imageArrival', () => {
       receiver.readNextImage((err: BusinessError, nextImage: image.Image) => {
-        Logger.info(TAG, 'Receiver.readNextImage success');
         if (err || nextImage === undefined) {
           Logger.error(TAG, `receiver.readNextImage failed. Code: ${err.code}`);
           return;
@@ -1235,17 +1249,12 @@ class CameraService {
             Logger.error(TAG, 'Failed to getComponent by nextImage.');
             return;
           }
-          let width = 1920;
-          let height = 1080;
+          let width = size.width;
+          let height = size.height;
           if (!this.isTextRecognizing && imgComponent && imgComponent.byteBuffer as ArrayBuffer) {
-            // Image decoding preview buffer.
-            // Note: The camera and camera preview are not always in the same orientation.
             let stride = imgComponent.rowStride;
-            Logger.info(TAG, `getComponent stride:${stride}, width: ${width}`);
-            if (stride == width) {
-              // this.decodeImageBuffer(nextImage, imgComponent.byteBuffer, CAMERA_1920, CAMERA_1080);
-            } else {
-              // NV21（YUV_420_SP）
+            let buffer = imgComponent.byteBuffer as ArrayBuffer;
+            if (stride != width){
               const dstBufferSize = width * height * 1.5;
               const dstArr = new Uint8Array(dstBufferSize);
               Logger.error(TAG, 'dstBufferSize: ' + dstBufferSize);
@@ -1253,12 +1262,60 @@ class CameraService {
                 const srcBuf = new Uint8Array(imgComponent.byteBuffer, j * stride, width);
                 dstArr.set(srcBuf, j * width);
               }
-              // this.decodeImageBuffer(nextImage, dstArr.buffer as ArrayBuffer, CAMERA_1920, CAMERA_1080);
+              buffer = dstArr
             }
+              this.isTextRecognizing = true
+              TextDetectorManager.detectText(buffer,size).then((texts)=>{
+                this.isTextRecognizing = false
+                Logger.info(JSON.stringify(texts))
+                nextImage.release()
+              }).catch((err)=>{
+                this.isTextRecognizing = false
+                Logger.error(JSON.stringify(err))
+                nextImage.release()
+              })
           }
         })
       })
     })
+  }
+  decodeImageBuffer(nextImage: image.Image, buffer: ArrayBuffer, width: number, height: number) {
+    try {
+      let byteImg: detectBarcode.ByteImage = {
+        byteBuffer: buffer,
+        width: width,
+        height: height,
+        format: detectBarcode.ImageFormat.NV21
+      }
+
+      let options: scanBarcode.ScanOptions = {
+        scanTypes: [scanCore.ScanType.ALL],
+        enableMultiMode: true,
+        enableAlbum: false
+      }
+
+      this.isTextRecognizing = true;
+      // Image decoding buffer.
+      detectBarcode.decodeImage(byteImg, options).then((res: detectBarcode.DetectResult) => {
+        let results: Array<scanBarcode.ScanResult> = res.scanResults;
+
+        results.forEach((result) => {
+          // Code value.
+          let codeType: scanCore.ScanType = result.scanType;
+          Logger.info(TAG, `Scan result: type: ${codeType}`);
+        });
+        this.isTextRecognizing = false;
+        // Release image data after decoding.
+        nextImage.release();
+      }).catch((error: BusinessError) => {
+        Logger.error(TAG, `Failed to decodeImage. Code: ${error.code}, message: ${error.message}.`);
+        this.isTextRecognizing = false;
+        nextImage.release();
+      })
+    } catch (error) {
+      this.isTextRecognizing = false;
+      nextImage.release();
+    }
   }
 
   /**

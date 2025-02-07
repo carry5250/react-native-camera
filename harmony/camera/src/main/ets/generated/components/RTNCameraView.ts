@@ -52,6 +52,8 @@ export namespace RTNCameraView {
     textRecognizedEnabled: boolean;
     defaultVideoQuality?: string;
     cameraViewDimensions?: unknown;
+    faceDetectionEnabled: boolean;
+    barcodeDetectionEnabled: boolean;
   }
   
   export interface Props extends ViewBaseProps {}
@@ -186,6 +188,13 @@ export namespace RTNCameraView {
     
     get cameraViewDimensions() {
       return this.rawProps.cameraViewDimensions;
+    }
+    get faceDetectionEnabled(){
+      return this.rawProps.faceDetectionEnabled ?? false
+    }
+
+    get barcodeDetectionEnabled(){
+      return this.rawProps.barcodeDetectionEnabled ?? false
     }
     
   

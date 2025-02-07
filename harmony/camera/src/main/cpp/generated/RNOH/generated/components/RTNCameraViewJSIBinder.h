@@ -42,6 +42,8 @@ class RTNCameraViewJSIBinder : public ViewComponentJSIBinder {
         object.setProperty(rt, "textRecognizedEnabled", true);
         object.setProperty(rt, "defaultVideoQuality", true);
         object.setProperty(rt, "cameraViewDimensions", true);
+        object.setProperty(rt, "faceDetectionEnabled", true);
+        object.setProperty(rt, "barcodeDetectionEnabled", true);
         return object;
     }
 

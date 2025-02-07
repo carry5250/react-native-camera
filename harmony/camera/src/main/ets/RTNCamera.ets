@@ -326,8 +326,9 @@ export struct RTNCameraView {
     const flashMode = getFlashMode(props.flashMode);
     const focusMode = getFocusMode(props.autoFocus);
 
-    const trackingEnabled = props.trackingEnabled;
+    const faceDetectionEnable = props.faceDetectionEnabled;
     const textRecognizedEnabled = props.textRecognizedEnabled;
+    const barcodeDetectionEnabled = props.barcodeDetectionEnabled;
     const videoStabilizationMode = getVideoStabilizationMode(props.videoStabilizationMode);
     const resolutionSize = getResolutionSize(props.defaultVideoQuality)
 
@@ -361,11 +362,14 @@ export struct RTNCameraView {
     if (!isEmptyValue(zoom)) {
       CameraService.setZoomRatioFn(zoom)
     }
-    if (!isEmptyValue(trackingEnabled)){
-      CameraService.setTrackingEnable(trackingEnabled)
+    if (!isEmptyValue(faceDetectionEnable)){
+      CameraService.setFaceDetectionEnableEnable(faceDetectionEnable)
     }
     if (!isEmptyValue(textRecognizedEnabled)){
       CameraService.setTextRecognizedEnabled(textRecognizedEnabled);
+    }
+    if (!isEmptyValue(barcodeDetectionEnabled)){
+      CameraService.setBarcodeDetectionEnabled(barcodeDetectionEnabled);
     }
   }
 

@@ -73,6 +73,9 @@ interface PropsType {
   video?: boolean;
   defaultVideoQuality?: string;
   cameraViewDimensions?: UnsafeMixed<{ width: Int32; height: Int32 }>;
+  textRecognizedEnabled?: boolean;
+  faceDetectionEnabled?: boolean;
+  barcodeDetectionEnabled?: boolean;
 }
 
 export type RecordAudioPermissionStatus = WithDefault<

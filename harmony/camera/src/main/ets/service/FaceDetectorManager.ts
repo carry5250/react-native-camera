@@ -5,11 +5,11 @@ import { faceDetector } from '@kit.CoreVisionKit';
 import { FaceFeature } from '../types'
 import Logger from '../utils/Logger'
 
-const TAG: string = 'CameraService';
+const TAG: string = 'FaceDetectorManager';
 
 export default class FaceDetectorManager {
 
-  async detectFaces(uri:string): Promise<Array<FaceFeature>> {
+   async detectFaces(uri:string): Promise<Array<FaceFeature>> {
 
     let imageSource: image.ImageSource | undefined = undefined;
     let fileSource:fileIo.File | undefined = undefined

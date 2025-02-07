@@ -487,7 +487,9 @@ const Camera = forwardRef<CameraRefType, CameraProps>(
           style={StyleSheet.absoluteFill}
           {...defaultProps}
           {...rest}
-          trackingEnabled={onFacesDetected ? true: false}
+          faceDetectionEnabled={onFacesDetected ? true : false}
+          textRecognizedEnabled={onTextRecognized ? true : false}
+          barcodeDetectionEnabled={(onBarCodeRead || onGoogleVisionBarcodesDetected) ? true : false}
         />
       </View>
     );
