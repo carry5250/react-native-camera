@@ -323,9 +323,7 @@ export struct RTNCameraView {
     const barcodeDetectionEnabled = props.barcodeDetectionEnabled;
     const videoStabilizationMode = getVideoStabilizationMode(props.videoStabilizationMode);
     const resolutionSize = getResolutionSize(props.defaultVideoQuality)
-
-    CameraService.setPlaySoundOnRecord(props.playSoundOnRecord)
-
+    
     CameraService.setPictureSize(props.pictureSize)
     if (resolutionSize) {
       CameraService.setResolutionSize(resolutionSize)
