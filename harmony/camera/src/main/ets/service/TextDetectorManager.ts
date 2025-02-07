@@ -3,8 +3,8 @@ import { textRecognition } from '@kit.CoreVisionKit';
 import { TrackedTextFeature, TrackedTextFeatureRecursive } from '../types'
 import Logger from '../utils/Logger'
 import { BusinessError } from '@kit.BasicServicesKit';
-const TAG: string = 'FaceDetectorManager';
-export default class FaceDetectorManager {
+const TAG: string = 'TextDetectorManager';
+export default class TextDetectorManager {
 
   static async detectText(buffer:ArrayBuffer,size:image.Size): Promise<TrackedTextFeature[]> {
     let pixelMapInstance:image.PixelMap| undefined = undefined
@@ -30,20 +30,16 @@ export default class FaceDetectorManager {
     let textConfiguration: textRecognition.TextRecognitionConfiguration = {
       isDirectionDetectionSupported: true
     };
-
-    await textRecognition.recognizeText(visionInfo, textConfiguration).then((TextRecognitionResult) => {
-      if (TextRecognitionResult.value === '') {
-        return Promise.resolve([])
-      } else {
-        let textFeatures = this.convertTextRecognitionResultToTrackedTextFeatures(TextRecognitionResult)
-        pixelMapInstance.release();
-        return Promise.resolve(textFeatures)
-      }
-    }).catch((e)=>{
+    try {
+      let TextRecognitionResult = await textRecognition.recognizeText(visionInfo,textConfiguration)
+      let textFeatures = this.convertTextRecognitionResultToTrackedTextFeatures(TextRecognitionResult)
+      pixelMapInstance.release();
+      return Promise.resolve(textFeatures)
+    } catch (e) {
       Logger.error(TAG,`detect faild：${JSON.stringify(e)}`)
       pixelMapInstance.release();
       return Promise.reject(JSON.stringify(e))
-    })
+    }
 
   }
   static  convertTextRecognitionResultToTrackedTextFeatures(
@@ -101,8 +97,11 @@ export default class FaceDetectorManager {
 
       features.push(blockFeature);
     });
-    Logger.info(TAG,`TextRecognitionResult:${JSON.stringify(result)}`)
-    Logger.info(TAG,`features:${JSON.stringify(features)}`)
+    if (result.value !== '') {
+      Logger.info(TAG,`TextRecognitionResult:${JSON.stringify(result)}`)
+      Logger.info(TAG,`features:${JSON.stringify(features)}`)
+    }
+
     return features;
   }
 

@@ -22,7 +22,9 @@ import {
   TakePictureResponse,
   TorchMode,
   ZoomMode,
-  Face
+  Face,
+  TrackedTextFeature,
+  BarCodeReadEvent
 } from '../types';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
 
@@ -35,7 +37,7 @@ interface MetadataObjectWithId extends camera.MetadataObject {
 import { getDeviceOrientation, getOrientation, getPhotoProfileList, getPhotoQuality } from './utils';
 
 import TextDetectorManager from './TextDetectorManager'
-import { detectBarcode, scanBarcode, scanCore } from '@kit.ScanKit';
+import BarCodeDetectorManager from './BarCodeDetectorManager'
 
 
 const TAG: string = 'CameraService';
@@ -96,7 +98,9 @@ class CameraService {
   private textRecognizedEnabled: boolean = false
   private barcodeDetectionEnabled: boolean = false
   private isTextRecognizing:boolean = false
+  private isBarcodeRecognizing:boolean = false
   private textPreviewOutput: camera.PreviewOutput | undefined = undefined
+  public isInitCamera:boolean = false
 
 
   private photoProfileObj: camera.Profile = {
@@ -230,7 +234,7 @@ class CameraService {
         return;
       }
       // Create textPreviewOutput
-      if (this.textRecognizedEnabled) {
+      if (this.textRecognizedEnabled || this.barcodeDetectionEnabled) {
         let size: image.Size = {
           width: previewProfile.size.width,
           height: previewProfile.size.height
@@ -311,6 +315,7 @@ class CameraService {
         metaDataOutput: this.metadataOutput,
         textPreviewOutput: this.textPreviewOutput
       });
+      this.isInitCamera = false;
       initSuccessCallBack?.();
     } catch (error) {
       let err = error as BusinessError;
@@ -417,9 +422,9 @@ class CameraService {
     }
   }
 
-  public onBarCodeRead() {
+  public onBarCodeRead(event:BarCodeReadEvent) {
     if (this.ctx) {
-      this.ctx.rnInstance.emitDeviceEvent('onBarCodeRead', {});
+      this.ctx.rnInstance.emitDeviceEvent('onBarCodeRead', event);
     }
   }
 
@@ -432,6 +437,12 @@ class CameraService {
   public onFaceDetectorError(error:BusinessError){
     if (this.ctx) {
       this.ctx.rnInstance.emitDeviceEvent('onFaceDetectionError',error);
+    }
+  }
+
+  public onTextRecognized(text:TrackedTextFeature[]){
+    if (this.ctx) {
+      this.ctx.rnInstance.emitDeviceEvent('onTextRecognized', text);
     }
   }
 
@@ -637,6 +648,7 @@ class CameraService {
     }
     if (this.surfaceId) {
       this.cameraDeviceIndex = cameraIndex;
+      this.isInitCamera = true;
       this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: cameraIndex, cameraProps: this.props })
     }
   }
@@ -790,9 +802,7 @@ class CameraService {
       return
     }
     this.faceDetectorEnable = enable
-    if (this.cameraManager != undefined && this.session != undefined) {
-      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
-    }
+    this.canInitCamera()
 
   }
   /**
@@ -803,9 +813,7 @@ class CameraService {
       return
     }
     this.textRecognizedEnabled = enable
-    if (this.cameraManager != undefined && this.session != undefined) {
-      this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
-    }
+    this.canInitCamera()
 
   }
   /**
@@ -816,10 +824,13 @@ class CameraService {
       return
     }
     this.barcodeDetectionEnabled = enable
-    if (this.cameraManager != undefined && this.session != undefined) {
+    this.canInitCamera()
+  }
+  canInitCamera(){
+    if (this.cameraManager != undefined && this.session != undefined && !this.isInitCamera) {
+      this.isInitCamera = true;
       this.initCamera({ surfaceId: this.surfaceId, cameraDeviceIndex: this.cameraDeviceIndex, cameraProps: this.props })
     }
-
   }
   /**
    * 释放会话及其相关参数
@@ -1225,7 +1236,10 @@ class CameraService {
           }
           return face
         })
-        this.onFaceDetector(faces)
+        if (faces.length > 0) {
+          this.onFaceDetector(faces)
+        }
+
       });
       metaDataOutput.on('error', (metadataOutputError: BusinessError) => {
         Logger.error(TAG,`Metadata output error code: ${metadataOutputError.code}`);
@@ -1251,7 +1265,7 @@ class CameraService {
           }
           let width = size.width;
           let height = size.height;
-          if (!this.isTextRecognizing && imgComponent && imgComponent.byteBuffer as ArrayBuffer) {
+          if (!this.isTextRecognizing && !this.isBarcodeRecognizing && imgComponent && imgComponent.byteBuffer as ArrayBuffer) {
             let stride = imgComponent.rowStride;
             let buffer = imgComponent.byteBuffer as ArrayBuffer;
             if (stride != width){
@@ -1264,59 +1278,40 @@ class CameraService {
               }
               buffer = dstArr
             }
+            if (this.textRecognizedEnabled){
               this.isTextRecognizing = true
               TextDetectorManager.detectText(buffer,size).then((texts)=>{
-                this.isTextRecognizing = false
-                Logger.info(JSON.stringify(texts))
-                nextImage.release()
+                if(texts.length > 0){
+                  this.onTextRecognized(texts)
+                }
               }).catch((err)=>{
+                Logger.error(TAG,`TextDetectorManager detector error:${JSON.stringify(err)}`)
+              }).finally(()=>{
                 this.isTextRecognizing = false
-                Logger.error(JSON.stringify(err))
                 nextImage.release()
               })
+            }
+            if (this.barcodeDetectionEnabled){
+              this.isBarcodeRecognizing = true
+              BarCodeDetectorManager.decodeImageBuffer(buffer,size).then((event)=>{
+                if (event) {
+                  this.onBarCodeRead(event)
+                }
+              }).catch((err)=>{
+                Logger.error(TAG,`BarCodeDetectorManager detector error:${JSON.stringify(err)}`)
+              }).finally(()=>{
+                this.isBarcodeRecognizing = false
+                nextImage.release()
+              })
+            }
+          }else {
+            nextImage.release();
           }
         })
       })
     })
   }
-  decodeImageBuffer(nextImage: image.Image, buffer: ArrayBuffer, width: number, height: number) {
-    try {
-      let byteImg: detectBarcode.ByteImage = {
-        byteBuffer: buffer,
-        width: width,
-        height: height,
-        format: detectBarcode.ImageFormat.NV21
-      }
 
-      let options: scanBarcode.ScanOptions = {
-        scanTypes: [scanCore.ScanType.ALL],
-        enableMultiMode: true,
-        enableAlbum: false
-      }
-
-      this.isTextRecognizing = true;
-      // Image decoding buffer.
-      detectBarcode.decodeImage(byteImg, options).then((res: detectBarcode.DetectResult) => {
-        let results: Array<scanBarcode.ScanResult> = res.scanResults;
-
-        results.forEach((result) => {
-          // Code value.
-          let codeType: scanCore.ScanType = result.scanType;
-          Logger.info(TAG, `Scan result: type: ${codeType}`);
-        });
-        this.isTextRecognizing = false;
-        // Release image data after decoding.
-        nextImage.release();
-      }).catch((error: BusinessError) => {
-        Logger.error(TAG, `Failed to decodeImage. Code: ${error.code}, message: ${error.message}.`);
-        this.isTextRecognizing = false;
-        nextImage.release();
-      })
-    } catch (error) {
-      this.isTextRecognizing = false;
-      nextImage.release();
-    }
-  }
 
   /**
    * 闪关灯

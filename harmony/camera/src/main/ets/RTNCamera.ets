@@ -174,6 +174,7 @@ export struct RTNCameraView {
       } else {
         this.cameraDeviceIndex = 1
       }
+      CameraService.isInitCamera = true
       CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,
@@ -301,6 +302,7 @@ export struct RTNCameraView {
     if (isCamera) {
       // 拍照服务
       CameraService.setCtx(this.ctx);
+      CameraService.isInitCamera = true;
       await CameraService.initCamera({
         surfaceId: this.surfaceId,
         cameraDeviceIndex: this.cameraDeviceIndex,

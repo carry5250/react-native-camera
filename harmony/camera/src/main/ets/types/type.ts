@@ -3,7 +3,7 @@ import { camera } from "@kit.CameraKit";
 type Orientation = 'auto' | 'landscapeLeft' | 'landscapeRight' | 'portrait' | 'portraitUpsideDown';
 type OrientationNumber = 1 | 2 | 3 | 4;
 
-interface Point<T = number> {
+ interface Point<T = number> {
   x: T;
   y: T;
 }
