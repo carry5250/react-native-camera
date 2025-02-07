@@ -51,7 +51,7 @@ type TrackedFaceFeature = FaceFeature & {
   faceID?: number,
 };
 
-export type RecordOptions = { quality?: string, orientation?: Object, maxDuration?: number, maxFileSize?: number, mute?: boolean, mirrorVideo?: boolean, path?: string, videoBitrate?: number, codec?: string, fps?: number }
+export type RecordOptions = { quality?: string, orientation?:  string | number, maxDuration?: number, maxFileSize?: number, mute?: boolean, mirrorVideo?: boolean, path?: string, videoBitrate?: number, codec?: string, fps?: number }
 
 export type HardwareCamera = { deviceType?: string, id: string, type: number }
 

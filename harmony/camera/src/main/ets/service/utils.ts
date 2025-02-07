@@ -100,6 +100,9 @@ export const getPhotoProfileList = (list: Array<any>): Array<{
   })
 }
 
+/*
+ * 拍照质量
+ * */
 export const getPhotoQuality = (quality: number): number => {
   if (quality <= 0) {
     return 0;
