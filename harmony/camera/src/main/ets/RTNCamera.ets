@@ -14,7 +14,6 @@ import Logger from './utils/Logger';
 import { display } from '@kit.ArkUI';
 import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from './common/Constants';
 import CameraService from './service/CameraService'
-import ScanService from './service/ScanService';
 import { FocusAreaComponent, } from './component';
 import { CameraProps, AllPermissionStatus, TakePictureOptions, RecordOptions } from './types'
 import { FocusComponent } from './component/FocusComponent';
@@ -27,7 +26,6 @@ import AVPlayerService from './service/AVPlayerService';
 
 
 const TAG: string = 'RTNCameraKitView';
-let timerId: number | null;
 
 
 @Component
@@ -36,11 +34,9 @@ export struct RTNCameraView {
   public ctx!: RNComponentContext
   public tag: number = 0
   private appContext: common.Context | undefined = getContext(this);
-  private windowClass: window.Window | undefined = undefined;
   private eventEmitter: RNC.RTNCameraView.EventEmitter | undefined = undefined
   private cleanUpCallbacks: (() => void)[] = []
   private audioManager = audio.getAudioManager();
-  private audioVolumeManager = this.audioManager.getVolumeManager();
   //
   @State private descriptorWrapper: RNC.RTNCameraView.DescriptorWrapper = {} as RNC.RTNCameraView.DescriptorWrapper
   @State cameraDeviceIndex: number = 0; // 后置相机
@@ -93,7 +89,6 @@ export struct RTNCameraView {
     ))
     const descriptorBase = this.descriptorWrapper['descriptor'];
     const props = descriptorBase.rawProps;
-    this.getLastWindow();
     this.subscribeToLifecycleEvents();
     this.registerCommandCallback();
     this.requestPermissionsFn(props)
@@ -158,11 +153,6 @@ export struct RTNCameraView {
     }
   }
 
-  getLastWindow() {
-    window.getLastWindow(this.appContext).then((lastWindow) => {
-      this.windowClass = lastWindow;
-    })
-  }
 
   /**
    * 订阅生命周期监听事件
@@ -276,6 +266,7 @@ export struct RTNCameraView {
 
   async takePhoto(options: TakePictureOptions) {
     this.ctx.rnInstance.emitDeviceEvent('onPictureTaken', {});
+    console.log('onPictureTaken-onPictureTaken`')
     const result = await CameraService.takePictureAsync(options);
     if (this.props.playSoundOnCapture) {
       AVPlayerService.avPlayerFdSrc();
@@ -288,7 +279,6 @@ export struct RTNCameraView {
    * */
   handleRelease() {
     CameraService.releaseCamera();
-    ScanService.scanRelease();
     this.isScanned = false;
     this.tipShow = false;
     this.isInitSuccess = false;
@@ -328,7 +318,6 @@ export struct RTNCameraView {
     const videoStabilizationMode = getVideoStabilizationMode(props.videoStabilizationMode);
     const resolutionSize = getResolutionSize(props.defaultVideoQuality)
 
-    CameraService.setPlaySoundOnRecord(props.playSoundOnRecord)
     CameraService.setPictureSize(props.pictureSize)
     if (resolutionSize) {
       CameraService.setResolutionSize(resolutionSize)

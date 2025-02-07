@@ -14,7 +14,6 @@ import Logger from '../utils/Logger';
 import { common, Context } from '@kit.AbilityKit';
 import { RNOHContext } from '@rnoh/react-native-openharmony/ts';
 import {
-  AllPermissionStatus,
   CameraProps,
   RecordOptions,
   RecordResponse,
@@ -23,7 +22,7 @@ import {
   TorchMode,
   ZoomMode
 } from '../types';
-import { CAMERA_STATUS, Constants, RecordAudioPermissionStatusEnum } from '../common/Constants';
+import { Constants } from '../common/Constants';
 import { getDeviceOrientation, getOrientation, getPhotoProfileList, getPhotoQuality, getResolutionSize } from './utils';
 
 
@@ -70,14 +69,12 @@ class CameraService {
   private videoFile: fs.File;
   private isRecording: boolean = false; //是否记录
   private props: CameraProps
-  private allPermissionStatus: AllPermissionStatus = {
-    cameraStatus: CAMERA_STATUS.PENDING_AUTHORIZATION,
-    recordAudioPermissionStatus: RecordAudioPermissionStatusEnum.PENDING_AUTHORIZATION
-  }
   private ratioList: string[] = ["16:9", "4:3"];
-  private playSoundOnRecord: boolean = true;
   private pictureSizesList: string[] = ['640x480'];
   private allVideoProfile: camera.VideoProfile[];
+  private photoPath: string = '';
+  private videoConfig: media.AVRecorderConfig
+  private isRecordingInterrupted: boolean = false;
 
 
   private photoProfileObj: camera.Profile = {
@@ -138,14 +135,14 @@ class CameraService {
 
   private initTempPath(path: string) {
     let pathDir = this.basicPath + '/' + path;
-    let res;
+    let isExist;
     try {
-      res = fs.accessSync(pathDir);
+      isExist = fs.accessSync(pathDir);
     } catch (error) {
-      Logger.error(TAG, `constructor error path not exists:${JSON.stringify(error)}`);
+      this.onError(`constructor error path not exists:${JSON.stringify(error)}`)
     }
-    if (!res) {
-      Logger.error(TAG, `constructor photo path not exists:${pathDir}`);
+    if (!isExist) {
+      Logger.debug(TAG, `constructor photo path not exists:${pathDir}`);
       fs.mkdirSync(pathDir, true);
     }
   }
@@ -156,7 +153,7 @@ class CameraService {
   public getAvailableCameraDevices(): Array<camera.CameraDevice> {
     let camerasArray = this.cameraManager?.getSupportedCameras();
     if (!camerasArray) {
-      Logger.error(TAG, 'getAvailableCameraDevices cannot get cameras');
+      this.onError('getAvailableCameraDevices cannot get cameras')
       return;
     }
     return camerasArray;
@@ -305,6 +302,16 @@ class CameraService {
     return avRecorder;
   }
 
+  private waitForPathResult(): Promise<void> {
+    return new Promise(resolve => {
+      const intervalId = setInterval(() => {
+        if (this.photoPath !== '') {
+          clearInterval(intervalId);
+          resolve();
+        }
+      }, 100);
+    })
+  }
 
   /*
    * 异步拍照
@@ -325,20 +332,20 @@ class CameraService {
       quality: getPhotoQuality(options.quality), //质量
       rotation: getOrientation(options.rotation)//角度
     }
-    await this.photoOutput?.capture(this.photoCaptureSetting);
+    try {
+      await this.photoOutput?.capture(this.photoCaptureSetting);
+    } catch (error) {
+      this.onError(`Failed to capture error: ${error.message},code:${error.code}`)
+      return;
+    }
+    await this.waitForPathResult();
     this.photoAsset.width = this.photoProfileObj.size.width;
     this.photoAsset.height = this.photoProfileObj.size.height;
     this.photoAsset.pictureOrientation = this.photoCaptureSetting.rotation;
     this.photoAsset.deviceOrientation = getDeviceOrientation(this.photoCaptureSetting.rotation);
-    return new Promise((resolve) => {
-      const timer = setInterval(() => {
-        if (this.photoAsset.uri) {
-          clearInterval(timer);
-          resolve(this.photoAsset);
-          Logger.info(TAG, `this.photoAsset res===${JSON.stringify(this.photoAsset)}`);
-        }
-      }, 200)
-    });
+    this.photoAsset.uri = this.photoPath;
+    this.photoPath = '';
+    return this.photoAsset
   }
 
   public onRecordingStart() {
@@ -354,6 +361,7 @@ class CameraService {
   }
 
   public onAudioInterrupted() {
+    this.isRecordingInterrupted = false;
     if (this.ctx) {
       this.ctx.rnInstance.emitDeviceEvent('onAudioInterrupted', {});
     }
@@ -431,9 +439,6 @@ class CameraService {
     this.videoProfileObj.size.height = resolutionSize.height;
   }
 
-  public setPlaySoundOnRecord(record) {
-    this.playSoundOnRecord = record
-  }
 
   avRecorderCallback(avRecorder: media.AVRecorder) {
     avRecorder.on('stateChange', (state: media.AVRecorderState, reason: media.StateChangeReason) => {
@@ -466,7 +471,7 @@ class CameraService {
         orientation = getOrientation(options.orientation)
       }
     }
-    const { captureAudio } = this.props;
+    const { captureAudio, playSoundOnRecord } = this.props;
     if (!captureAudio) {
       options.mute = true;
     }
@@ -478,19 +483,21 @@ class CameraService {
       fps = minFps;
       this.onError('The fps is lower than the minimum value.')
     }
-
+    let audioConfig = playSoundOnRecord ? {
+      audioBitrate: Constants.AUDIO_BITRATE,
+      audioChannels: Constants.AUDIO_CHANNELS,
+      audioCodec: media.CodecMimeType.AUDIO_AAC,
+      audioSampleRate: Constants.AUDIO_SAMPLE_RATE,
+    } : {};
     this.videoUri = `${this.basicPath}/${this.outPathArray[1]}/${Date.now()}.${'mp4'}`;
     this.videoFile = fs.openSync(this.videoUri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
     let videoConfig: media.AVRecorderConfig = {
       audioSourceType: media.AudioSourceType.AUDIO_SOURCE_TYPE_MIC,
       videoSourceType: media.VideoSourceType.VIDEO_SOURCE_TYPE_SURFACE_YUV,
       profile: {
-        audioBitrate: Constants.AUDIO_BITRATE,
-        audioChannels: Constants.AUDIO_CHANNELS,
-        audioCodec: media.CodecMimeType.AUDIO_AAC,
-        audioSampleRate: Constants.AUDIO_SAMPLE_RATE,
+        ...audioConfig,
         fileFormat: media.ContainerFormatType.CFT_MPEG_4,
-        videoBitrate: Constants.VIDEO_BITRATE,
+        videoBitrate: options?.videoBitrate ?? Constants.VIDEO_BITRATE,
         videoCodec: media.CodecMimeType.VIDEO_AVC,
         videoFrameWidth: this.videoProfileObj.size.width,
         videoFrameHeight: this.videoProfileObj.size.height,
@@ -499,6 +506,7 @@ class CameraService {
       url: `fd://${this.videoFile.fd.toString()}`,
       rotation: orientation ?? this.curCameraDevice?.cameraOrientation
     };
+    this.videoConfig = videoConfig;
     return videoConfig;
   }
 
@@ -507,28 +515,35 @@ class CameraService {
    * */
   public async prepareAVRecorder(): Promise<void> {
     let videoConfig = await this.prepareAVRecorderConfig();
-    await this.avRecorder?.prepare(videoConfig).catch((err: BusinessError): void => {
-      Logger.error(TAG, `prepareAVRecorder prepare err: ${JSON.stringify(err)}`);
-    });
+    if (this.avRecorder) {
+      await this.avRecorder.release();
+    }
+    this.avRecorder = await media.createAVRecorder();
+    try {
+      await this.avRecorder.prepare(videoConfig);
+    } catch (error) {
+      Logger.error(TAG, `avRecorder.prepare.error ${JSON.stringify(error)}`);
+    }
   }
 
   /*
  * 开始录制
  * */
   public async recordAsync(options?: RecordOptions): Promise<RecordResponse> {
-    try {
-      // 重新进入 prepared 状态
-      let videoConfig = await this.prepareAVRecorderConfig(options);
-      await this.avRecorder.prepare(videoConfig);
-      await this.avRecorder.getInputSurface();
-    } catch (error) {
-      Logger.error(TAG, `restart recording error: ${JSON.stringify(error)}`);
+    if (this.avRecorder.state === 'stopped' || this.avRecorder.state === 'idle') {
+      try {
+        // 重新进入 prepared 状态
+        let videoConfig = await this.prepareAVRecorderConfig(options);
+        await this.avRecorder.prepare(videoConfig);
+        await this.avRecorder.getInputSurface();
+      } catch (error) {
+        Logger.error(TAG, `restart recording error: ${JSON.stringify(error)}`);
+      }
     }
-
-
     try {
       // 开始录制
       await this.avRecorder.start();
+      this.onRecordingStart();
     } catch (error) {
       Logger.error(TAG, 'startRecording catch Failed to start recording.' + JSON.stringify(error))
     }
@@ -564,11 +579,12 @@ class CameraService {
       }
       // 重置
       await this.avRecorder.reset();
+      this.onRecordingEnd();
       this.ctx && this.ctx.rnInstance.emitDeviceEvent('recordAsync', {
         uri: this.videoUri,
-        videoOrientation: 1,
-        deviceOrientation: 1,
-        isRecordingInterrupted: true,
+        videoOrientation: this.videoConfig.rotation,
+        deviceOrientation: this.curCameraDevice?.cameraPosition,
+        isRecordingInterrupted: this.isRecordingInterrupted,
       });
       // 关闭文件
       fs.closeSync(this.videoFile);
@@ -728,7 +744,6 @@ class CameraService {
    * 变焦
    */
   setZoomRatioFn(zoom: number): void {
-    Logger.info(TAG, `setSmoothZoom: ${zoom}`)
     if (this.zoomMode === 'off') {
       return;
     }
@@ -991,8 +1006,7 @@ class CameraService {
       Logger.error(TAG, `savePicture statSync failed,code:${error}.`);
     }
     fs.closeSync(_file);
-    Logger.info(TAG, `photoFile:${JSON.stringify(photoFile)}`);
-    this.photoAsset.uri = photoFile;
+    this.photoPath = photoFile;
   }
 
   /**
@@ -1167,7 +1181,7 @@ class CameraService {
     try {
       if (mode === 'on') {
         this.setFlashModeFn(camera.FlashMode.FLASH_MODE_ALWAYS_OPEN)
-      } else {
+      } else if (mode === 'off') {
         this.setFlashModeFn(camera.FlashMode.FLASH_MODE_CLOSE)
       }
     } catch (error) {
